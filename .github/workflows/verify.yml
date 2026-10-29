@@ -1,0 +1,15 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test zm5-only/attack.test.cjs
+      - run: swiftc -typecheck zm5-only/main.swift -framework AppKit
+      - run: python3 -m py_compile tools/build_patch.py
