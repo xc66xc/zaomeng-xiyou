@@ -2,6 +2,44 @@ import AppKit
 import CryptoKit
 import UniformTypeIdentifiers
 
+// Native button tracking, keyboard and accessibility remain provided by NSButton.
+private final class HelperButton: NSButton {
+    enum Style { case outlined, primary, ghost }
+    var style: Style = .outlined
+    private let accent = NSColor(calibratedRed: 0.70, green: 0.43, blue: 0.11, alpha: 1)
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: super.intrinsicContentSize.width + 20, height: 38)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let rect = bounds.insetBy(dx: 2, dy: 2)
+        let shape = NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7)
+        if style != .ghost {
+            let fill = style == .primary
+                ? NSColor(calibratedRed: 0.83, green: 0.60, blue: 0.29, alpha: 1)
+                : NSColor.white
+            (isHighlighted ? fill.blended(withFraction: 0.12, of: .black)! : fill).setFill()
+            shape.fill()
+            (style == .primary ? accent : NSColor(calibratedWhite: 0.82, alpha: 1)).setStroke()
+            shape.lineWidth = 1
+            shape.stroke()
+        }
+        let text = NSAttributedString(string: title, attributes: [
+            .font: font ?? NSFont.systemFont(ofSize: 14),
+            .foregroundColor: style == .ghost ? accent : NSColor(calibratedWhite: 0.14, alpha: 1)
+        ])
+        let size = text.size()
+        text.draw(at: NSPoint(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2))
+        if window?.firstResponder === self {
+            NSColor.keyboardFocusIndicatorColor.setStroke()
+            let focus = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
+            focus.lineWidth = 2
+            focus.stroke()
+        }
+    }
+}
+
 final class AttackApp: NSObject, NSApplicationDelegate {
     private var client: URL {
         let paths = [UserDefaults.standard.string(forKey: "clientPath"),
@@ -19,47 +57,156 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     private var downloading = false
     private var messageUntil = Date.distantPast
 
+    private let ink = NSColor(calibratedWhite: 0.14, alpha: 1)
+    private let muted = NSColor(calibratedWhite: 0.43, alpha: 1)
+    private let amber = NSColor(calibratedRed: 0.70, green: 0.43, blue: 0.11, alpha: 1)
+    private let surface = NSColor(calibratedRed: 0.98, green: 0.98, blue: 0.97, alpha: 1)
+    private let connection = NSTextField(labelWithString: "游戏未打开")
+
+    private func label(_ text: String, size: CGFloat = 14, weight: NSFont.Weight = .regular,
+                       secondary: Bool = false) -> NSTextField {
+        let value = NSTextField(wrappingLabelWithString: text)
+        value.font = .systemFont(ofSize: size, weight: weight)
+        value.textColor = secondary ? muted : ink
+        return value
+    }
+
+    private func line() -> NSView {
+        let value = NSView()
+        value.wantsLayer = true
+        value.layer?.backgroundColor = NSColor(calibratedWhite: 0.87, alpha: 1).cgColor
+        value.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        return value
+    }
+
+    private func row(_ views: [NSView], spacing: CGFloat = 12) -> NSStackView {
+        let value = NSStackView(views: views)
+        value.orientation = .horizontal
+        value.alignment = .centerY
+        value.spacing = spacing
+        return value
+    }
+
+    private func stretch() -> NSView {
+        let value = NSView()
+        value.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        return value
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         makeMenu()
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 500),
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 760, height: 620),
                           styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = "造梦西游5 · 攻击倍率"
+        window.title = "造梦西游助手"
+        window.appearance = NSAppearance(named: .aqua)
+        window.backgroundColor = surface
         window.isReleasedWhenClosed = false
-        let title = NSTextField(labelWithString: "攻击倍率，随时调整")
-        title.font = .systemFont(ofSize: 25, weight: .semibold)
-        let subtitle = NSTextField(labelWithString: "造梦西游5 · 角色 / 宠物 / 幻兽 · 单人副本")
-        subtitle.textColor = .secondaryLabelColor
-        field.placeholderString = "输入正整数，1 倍还原"
-        field.font = .monospacedDigitSystemFont(ofSize: 20, weight: .regular)
+        let content = window.contentView!
+
+        let chapters = row([], spacing: 0)
+        chapters.distribution = .fillEqually
+        for chapter in 1...5 {
+            let supported = chapter == 5
+            let title = label("造梦\(chapter)", size: 16, weight: supported ? .semibold : .regular,
+                              secondary: !supported)
+            title.alignment = .center
+            let detail = label(supported ? "当前章节" : "暂未支持", size: 11, secondary: true)
+            detail.alignment = .center
+            let item = NSStackView(views: [title, detail])
+            item.orientation = .vertical
+            item.spacing = 3
+            item.wantsLayer = true
+            item.layer?.backgroundColor = supported
+                ? NSColor(calibratedRed: 1, green: 0.95, blue: 0.87, alpha: 1).cgColor : surface.cgColor
+            if supported { title.textColor = amber }
+            item.heightAnchor.constraint(equalToConstant: 60).isActive = true
+            item.setAccessibilityElement(true)
+            item.setAccessibilityLabel("造梦\(chapter)，\(supported ? "当前章节" : "暂未支持")")
+            chapters.addArrangedSubview(item)
+        }
+        chapters.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(chapters)
+
+        let heading = row([label("造梦西游 5", size: 18, weight: .semibold),
+                           label("上古天帝篇", secondary: true), stretch(), connection,
+                           button("接入并打开游戏", #selector(connect))])
+        connection.font = .systemFont(ofSize: 12)
+        connection.textColor = muted
+        connection.setAccessibilityLabel("客户端运行状态")
+        field.placeholderString = "输入正整数"
+        field.font = .monospacedDigitSystemFont(ofSize: 40, weight: .regular)
+        field.textColor = ink
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
         field.setAccessibilityLabel("攻击倍率，正整数，1 倍还原")
-        field.target = self; field.action = #selector(apply)
-        let row = NSStackView(views: [field, NSTextField(labelWithString: "倍"), button("应用", #selector(apply)),
-                                      button("恢复1倍", #selector(reset))])
-        row.spacing = 10
-        field.widthAnchor.constraint(equalToConstant: 230).isActive = true
-        let note = NSTextField(wrappingLabelWithString:
-            "倍率范围 1～2147483647，单次伤害最高 2147483647。仅单人副本普通和技能伤害生效，独立真实伤害不变。退出助手后约4秒恢复原倍率。")
-        note.font = .systemFont(ofSize: 12)
-        note.textColor = .secondaryLabelColor
-        status.setAccessibilityLabel("接入状态")
-        let links = NSStackView(views: [button("官方下载客户端", #selector(downloadClient)),
-            button("官方下载游戏文件", #selector(downloadGame))])
-        links.spacing = 12
-        let setup = NSTextField(wrappingLabelWithString: "首次使用：从官方自行下载兼容客户端和原始游戏文件。接入时会选择本地文件并生成补丁，发布包不含游戏资源。")
-        setup.font = .systemFont(ofSize: 12)
-        let stack = NSStackView(views: [title, subtitle, row, button("接入并打开游戏", #selector(connect)), links, setup, status, note])
-        stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 16
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        window.contentView!.addSubview(stack)
+        field.target = self
+        field.action = #selector(apply)
+        field.translatesAutoresizingMaskIntoConstraints = false
+        let input = NSView()
+        input.wantsLayer = true
+        input.layer?.backgroundColor = NSColor.white.cgColor
+        input.layer?.borderWidth = 1
+        input.layer?.borderColor = amber.cgColor
+        input.layer?.cornerRadius = 8
+        let unit = label("倍", size: 20, secondary: true)
+        unit.translatesAutoresizingMaskIntoConstraints = false
+        input.addSubview(field)
+        input.addSubview(unit)
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor, constant: 24),
-            stack.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -24),
-            stack.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 24),
-            setup.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            status.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            note.widthAnchor.constraint(equalTo: stack.widthAnchor)
+            input.heightAnchor.constraint(equalToConstant: 76),
+            field.leadingAnchor.constraint(equalTo: input.leadingAnchor, constant: 18),
+            field.trailingAnchor.constraint(equalTo: unit.leadingAnchor, constant: -12),
+            field.centerYAnchor.constraint(equalTo: input.centerYAnchor),
+            unit.trailingAnchor.constraint(equalTo: input.trailingAnchor, constant: -18),
+            unit.centerYAnchor.constraint(equalTo: input.centerYAnchor),
+            unit.widthAnchor.constraint(equalToConstant: 24)
         ])
-        window.center(); window.makeKeyAndOrderFront(nil)
+        let applyButton = button("应用", #selector(apply))
+        applyButton.style = .primary
+        applyButton.heightAnchor.constraint(equalToConstant: 76).isActive = true
+        applyButton.font = .systemFont(ofSize: 20, weight: .semibold)
+        applyButton.widthAnchor.constraint(equalToConstant: 142).isActive = true
+        let inputRow = row([input, applyButton], spacing: 16)
+        let resetButton = button("恢复 1 倍", #selector(reset))
+        resetButton.style = .ghost
+        resetButton.isBordered = false
+        resetButton.contentTintColor = amber
+        resetButton.setContentHuggingPriority(.required, for: .horizontal)
+        let feedback = row([resetButton, stretch()])
+        status.font = .systemFont(ofSize: 12)
+        status.textColor = muted
+        status.setAccessibilityLabel("操作与接入结果")
+        status.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        let stack = NSStackView(views: [heading, line(),
+            label("攻击倍率", size: 30, weight: .semibold),
+            label("角色、宠物、幻兽 · 仅单人副本", size: 16, secondary: true),
+            inputRow, feedback,
+            label("普通与技能伤害生效，独立真实伤害不变。", secondary: true),
+            status, line(), label("游戏接入", size: 20, weight: .semibold),
+            label("首次使用：从官方准备客户端和游戏文件，再接入游戏。", secondary: true),
+            row([button("官方客户端", #selector(downloadClient)),
+                 button("官方游戏文件", #selector(downloadGame)), stretch()]),
+            line(), label("倍率范围 1～2147483647 · 单次伤害最高 2147483647\n退出助手后约 4 秒恢复原倍率。", size: 12, secondary: true)])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(stack)
+        for view in stack.arrangedSubviews {
+            view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+        NSLayoutConstraint.activate([
+            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            chapters.topAnchor.constraint(equalTo: content.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 30),
+            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -30),
+            stack.topAnchor.constraint(equalTo: chapters.bottomAnchor, constant: 22),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -20)
+        ])
+        window.center()
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
         tick()
@@ -82,9 +229,12 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = menu
     }
 
-    private func button(_ title: String, _ action: Selector) -> NSButton {
-        let value = NSButton(title: title, target: self, action: action)
-        value.bezelStyle = .rounded
+    private func button(_ title: String, _ action: Selector) -> HelperButton {
+        let value = HelperButton(title: title, target: self, action: action)
+        value.bezelStyle = .regularSquare
+        value.isBordered = false
+        value.controlSize = .large
+        value.font = .systemFont(ofSize: 14, weight: .medium)
         return value
     }
 
@@ -109,7 +259,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             show("请输入 1～2147483647 之间的整数。"); return
         }
         multiplier = value; field.stringValue = String(value)
-        do { try writeSettings(); show("已设置 \(value) 倍，接入生效状态见下方更新。") }
+        do { try writeSettings(); show("已设置 \(value) 倍。") }
         catch { show("保存失败：\(error.localizedDescription)") }
     }
 
@@ -278,8 +428,10 @@ final class AttackApp: NSObject, NSApplicationDelegate {
 
     private func tick() {
         do { try writeSettings() } catch { show("配置保存失败：\(error.localizedDescription)"); return }
+        let game = runningGame()
+        connection.stringValue = game == nil ? "游戏未打开" : "客户端运行中"
         guard Date() > messageUntil else { return }
-        guard let game = runningGame() else { status.stringValue = "游戏客户端未打开。"; return }
+        guard let game = game else { status.stringValue = "游戏客户端未打开。"; return }
         guard let data = try? Data(contentsOf: support.appendingPathComponent("status.json")),
               let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               value["protocol"] as? String == proto,
