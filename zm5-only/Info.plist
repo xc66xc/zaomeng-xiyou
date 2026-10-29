@@ -2,12 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>local.carlwang.zmxy-drop-control</string>
-<key>CFBundleName</key><string>造梦西游5攻击助手</string>
-<key>CFBundleDisplayName</key><string>造梦西游5攻击助手</string>
+<key>CFBundleName</key><string>造梦西游攻击助手</string>
+<key>CFBundleDisplayName</key><string>造梦西游攻击助手</string>
 <key>CFBundleExecutable</key><string>DropControl</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>5.3.0</string>
-<key>CFBundleVersion</key><string>6</string>
+<key>CFBundleShortVersionString</key><string>5.4.0</string>
+<key>CFBundleVersion</key><string>7</string>
 <key>LSMinimumSystemVersion</key><string>12.0</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
