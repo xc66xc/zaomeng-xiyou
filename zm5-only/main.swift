@@ -1,7 +1,13 @@
 import AppKit
+import CryptoKit
+import UniformTypeIdentifiers
 
 final class AttackApp: NSObject, NSApplicationDelegate {
-    private let client = URL(fileURLWithPath: "/Applications/摩尔庄园.app")
+    private var client: URL {
+        let paths = [UserDefaults.standard.string(forKey: "clientPath"),
+                     "/Applications/造梦西游.app", "/Applications/摩尔庄园.app"].compactMap { $0 }
+        return URL(fileURLWithPath: paths.first { FileManager.default.fileExists(atPath: $0) } ?? paths[1])
+    }
     private let support = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/ZMXYDropControl")
     private let proto = "zm5-attack-1.2"
@@ -14,7 +20,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         makeMenu()
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 330),
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 500),
                           styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.title = "造梦西游5 · 攻击倍率"
         window.isReleasedWhenClosed = false
@@ -35,7 +41,12 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         note.font = .systemFont(ofSize: 12)
         note.textColor = .secondaryLabelColor
         status.setAccessibilityLabel("接入状态")
-        let stack = NSStackView(views: [title, subtitle, row, button("接入并打开游戏", #selector(connect)), status, note])
+        let links = NSStackView(views: [button("官方下载客户端", #selector(downloadClient)),
+            button("官方下载游戏文件", #selector(downloadGame))])
+        links.spacing = 12
+        let setup = NSTextField(wrappingLabelWithString: "首次使用：从官方自行下载兼容客户端和原始游戏文件。接入时会选择本地文件并生成补丁，发布包不含游戏资源。")
+        setup.font = .systemFont(ofSize: 12)
+        let stack = NSStackView(views: [title, subtitle, row, button("接入并打开游戏", #selector(connect)), links, setup, status, note])
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 16
         stack.translatesAutoresizingMaskIntoConstraints = false
         window.contentView!.addSubview(stack)
@@ -43,6 +54,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             stack.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor, constant: 24),
             stack.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor, constant: -24),
             stack.topAnchor.constraint(equalTo: window.contentView!.topAnchor, constant: 24),
+            setup.widthAnchor.constraint(equalTo: stack.widthAnchor),
             status.widthAnchor.constraint(equalTo: stack.widthAnchor),
             note.widthAnchor.constraint(equalTo: stack.widthAnchor)
         ])
@@ -109,10 +121,12 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         let main = client.appendingPathComponent("Contents/Resources/app/main.js")
         let current = try String(contentsOf: main, encoding: .utf8)
         try fm.createDirectory(at: support, withIntermediateDirectories: true)
-        for name in ["bridge.cjs", "attack.cjs", "patched-zm5.swf"] {
+        let patch = try localPatch()
+        for name in ["bridge.cjs", "attack.cjs"] {
             let source = Bundle.main.resourceURL!.appendingPathComponent(name)
             try Data(contentsOf: source).write(to: support.appendingPathComponent(name), options: .atomic)
         }
+        try patch.write(to: support.appendingPathComponent("patched-zm5.swf"), options: .atomic)
         if !current.hasPrefix("// ZMXY_DROP_CONTROL_BEGIN\n") {
             let backup = support.appendingPathComponent("main-before-zm5-only-\(Int(Date().timeIntervalSince1970)).js")
             try current.write(to: backup, atomically: true, encoding: .utf8)
@@ -126,16 +140,102 @@ final class AttackApp: NSObject, NSApplicationDelegate {
 
     @objc private func connect() {
         do {
-            try install(); try writeSettings()
             if runningGame() != nil {
-                show("已安装。请保存并完全退出游戏，再点击接入并打开游戏。"); return
+                show("请保存并完全退出游戏，再点击接入，以便更新客户端名称和模块。"); return
             }
+            try prepareClient(); try install(); try signClient(); try writeSettings()
             NSWorkspace.shared.openApplication(at: client, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
                 DispatchQueue.main.async {
                     self?.show(error.map { "打开失败：\($0.localizedDescription)" } ?? "客户端已打开，请进入造梦西游5。")
                 }
             }
         } catch { show("接入失败：\(error.localizedDescription)") }
+    }
+
+    private func localPatch() throws -> Data {
+        let recipe = try JSONDecoder().decode(PatchRecipe.self,
+            from: Data(contentsOf: Bundle.main.url(forResource: "patch-v4780", withExtension: "json")!))
+        func verified(_ url: URL) -> Data? {
+            guard let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+                  size > 0, size < 32_000_000, let data = try? Data(contentsOf: url) else { return nil }
+            return try? recipe.apply(data)
+        }
+        for url in [support.appendingPathComponent("patched-zm5.swf"),
+                    Bundle.main.resourceURL!.appendingPathComponent("patched-zm5.swf")] {
+            if let data = verified(url) { return data }
+        }
+        let panel = NSOpenPanel()
+        panel.title = "选择造梦5 V47.8游戏文件"
+        panel.message = "请选择从官方自行下载的 v4780.swf。助手只在本机生成补丁；已有此版补丁也可使用。"
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else {
+            throw NSError(domain: "ZMXY", code: 1, userInfo: [NSLocalizedDescriptionKey: "已取消选择本地补丁。"])
+        }
+        guard let data = verified(url) else {
+            throw NSError(domain: "ZMXY", code: 2, userInfo: [NSLocalizedDescriptionKey: "补丁校验不符，请使用此版本支持的 V47.8 补丁。"])
+        }
+        return data
+    }
+
+    @objc private func downloadClient() {
+        NSWorkspace.shared.open(URL(string: "https://webres.61.com/common/flash/common_micro.html?game=mole")!)
+    }
+
+    @objc private func downloadGame() {
+        NSWorkspace.shared.open(URL(string: "https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf")!)
+    }
+
+    private func prepareClient() throws {
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: client.path) {
+            let panel = NSOpenPanel()
+            panel.title = "选择已从官方安装的兼容 Mac 客户端"
+            panel.allowedContentTypes = [.applicationBundle]
+            panel.canChooseDirectories = false
+            guard panel.runModal() == .OK, let url = panel.url else {
+                throw NSError(domain: "ZMXY", code: 3, userInfo: [NSLocalizedDescriptionKey: "请先从官方下载安装客户端。"])
+            }
+            UserDefaults.standard.set(url.path, forKey: "clientPath")
+        }
+        let old = client
+        guard fm.fileExists(atPath: old.appendingPathComponent("Contents/Resources/app/main.js").path),
+              fm.fileExists(atPath: old.appendingPathComponent("Contents/Resources/app/plugins/PepperFlashPlayer.plugin").path) else {
+            throw NSError(domain: "ZMXY", code: 4, userInfo: [NSLocalizedDescriptionKey: "此客户端不兼容。需要带 PepperFlash 的 Electron 微端，不能使用手游或普通浏览器。"])
+        }
+        let destination = old.deletingLastPathComponent().appendingPathComponent("造梦西游.app")
+        if old != destination && fm.fileExists(atPath: destination.path) {
+            throw NSError(domain: "ZMXY", code: 5, userInfo: [NSLocalizedDescriptionKey: "同目录已有造梦西游.app，请先确认客户端位置。"])
+        }
+        let info = old.appendingPathComponent("Contents/Info.plist")
+        let previous = try Data(contentsOf: info)
+        var values = try PropertyListSerialization.propertyList(from: previous, format: nil) as! [String: Any]
+        values["CFBundleDisplayName"] = "造梦西游"
+        // Electron 11 derives helper paths from this internal name. Keep it
+        // aligned with the unmodified executable/helper bundles.
+        values["CFBundleName"] = values["CFBundleExecutable"]
+        do {
+            try PropertyListSerialization.data(fromPropertyList: values, format: .xml, options: 0).write(to: info, options: .atomic)
+            if old != destination { try fm.moveItem(at: old, to: destination) }
+            UserDefaults.standard.set(destination.path, forKey: "clientPath")
+        } catch {
+            try? previous.write(to: info, options: .atomic)
+            throw error
+        }
+    }
+
+    private func signClient() throws {
+        let configURL = client.appendingPathComponent("Contents/Resources/app/config.json")
+        var config = try JSONSerialization.jsonObject(with: Data(contentsOf: configURL)) as! [String: Any]
+        config["appUrl"] = "https://www.4399.com/flash/zmhj.htm"
+        try JSONSerialization.data(withJSONObject: config).write(to: configURL, options: .atomic)
+        let signer = Process()
+        signer.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        signer.arguments = ["--force", "--sign", "-", client.path]
+        try signer.run(); signer.waitUntilExit()
+        guard signer.terminationStatus == 0 else {
+            throw NSError(domain: "ZMXY", code: 6, userInfo: [NSLocalizedDescriptionKey: "客户端本地签名失败，请检查目录写入权限。"])
+        }
     }
 
     private func runningGame() -> NSRunningApplication? {
