@@ -16,6 +16,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     private let status = NSTextField(wrappingLabelWithString: "先接入游戏，再应用倍率。")
     private var multiplier: Int64 = 1
     private var timer: Timer?
+    private var downloading = false
     private var messageUntil = Date.distantPast
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -183,7 +184,40 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func downloadGame() {
-        NSWorkspace.shared.open(URL(string: "https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf")!)
+        guard !downloading else { return }
+        let panel = NSSavePanel()
+        panel.title = "从4399官方保存 V47.8 原始游戏文件"
+        panel.nameFieldStringValue = "v4780.swf"
+        panel.allowedContentTypes = [UTType(filenameExtension: "swf") ?? .data]
+        guard panel.runModal() == .OK, let destination = panel.url else { return }
+        downloading = true
+        show("正在从4399官方源下载并校验游戏文件…")
+        messageUntil = .distantFuture
+        var request = URLRequest(url: URL(string: "https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf")!)
+        request.setValue("https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780d.htm", forHTTPHeaderField: "Referer")
+        request.timeoutInterval = 60
+        URLSession.shared.downloadTask(with: request) { [weak self] file, response, error in
+            let result: Result<Void, Error> = Result {
+                if let error = error { throw error }
+                guard (response as? HTTPURLResponse)?.statusCode == 200, let file = file,
+                      let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+                      size > 0, size < 32_000_000 else { throw PatchRecipe.invalid() }
+                let data = try Data(contentsOf: file)
+                let recipe = try JSONDecoder().decode(PatchRecipe.self,
+                    from: Data(contentsOf: Bundle.main.url(forResource: "patch-v4780", withExtension: "json")!))
+                let original = try PatchRecipe.unpack(data)
+                guard PatchRecipe.hash(original) == recipe.sourceHash else { throw PatchRecipe.invalid() }
+                try data.write(to: destination, options: .atomic)
+            }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.downloading = false
+                switch result {
+                case .success: self.show("官方游戏文件已保存。接入时选择该文件即可。")
+                case .failure(let error): self.show("官方下载失败：\(error.localizedDescription)")
+                }
+            }
+        }.resume()
     }
 
     private func prepareClient() throws {
