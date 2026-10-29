@@ -32,7 +32,7 @@ jobs:
         run: |
           ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh "$RUNNER_TEMP/造梦西游攻击助手.app"
           test -z "$(find "$RUNNER_TEMP/造梦西游攻击助手.app" -iname '*.swf' -print)"
-      - run: python3 -m py_compile tools/build_patch.py tools/make_delta.py
+      - run: python3 -m py_compile tools/build_patch.py tools/build_patch4.py tools/make_delta.py
   release:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: verify
@@ -68,12 +68,12 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
           ## 下载与首次使用
-          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；目前只支持造梦5 V47.8攻击倍率。
+          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；支持造梦4 V58.8本人角色与造梦5 V47.8攻击倍率。
           - 仅 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证。首次打开可能需要系统安全确认；Intel客户端在Apple Silicon上可能需要Rosetta。
           - 不含客户端、Flash或完整游戏SWF。用户须自行从官方来源下载安装依赖，不能把手游当成兼容客户端。
           - 官方客户端入口：https://webres.61.com/common/flash/common_micro.html?game=mole
-          - 原始游戏文件请点击助手中的“下载官方游戏文件”，自行选择保存位置；助手从4399官方下载并校验。直接打开SWF链接可能被防盗链替换为提示文件。
-          - 首次接入时选择本地兼容客户端及原始SWF；助手仅在本机校验并生成补丁。已有兼容本地补丁可复用。
+          - 原始游戏文件请点击助手中的“官方游戏文件”，自行选择保存位置；助手从4399官方下载并校验。直接打开SWF链接可能被防盗链替换为提示文件。
+          - 首次接入时先切换章节，再选择本地兼容客户端及对应原始SWF；助手仅在本机校验并生成补丁。已有兼容本地补丁可复用。
           - 接入前保存并完全退出游戏；接入将把所选客户端本地改名为“造梦西游”，并打开4399官方游戏入口。
           - SHA256SUMS用于校验下载完整性，不能代替签名。构建与本地补丁匹配已验证，其他用户机器与在线战斗不作已实测声明。
           NOTES

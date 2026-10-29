@@ -67,6 +67,6 @@ struct PatchRecipe: Decodable {
     }
 
     static func invalid() -> NSError {
-        NSError(domain: "ZMXY", code: 2, userInfo: [NSLocalizedDescriptionKey: "游戏文件版本或校验不符，请使用 V47.8 官方原始 SWF。"])
+        NSError(domain: "ZMXY", code: 2, userInfo: [NSLocalizedDescriptionKey: "游戏文件版本或校验不符，请使用所选章节支持的官方原始 SWF。"])
     }
 }

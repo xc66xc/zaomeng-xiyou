@@ -40,6 +40,25 @@ private final class HelperButton: NSButton {
     }
 }
 
+private enum GameChapter: Int, CaseIterable {
+    case four = 4, five = 5
+    var game: String { "zm\(rawValue)" }
+    var protocolName: String { self == .four ? "zm4-attack-1.0" : "zm5-attack-1.2" }
+    var title: String { self == .four ? "洪荒大劫篇" : "上古天帝篇" }
+    var version: String { self == .four ? "V58.8" : "V47.8" }
+    var filename: String { self == .four ? "v5880" : "v4780" }
+    var recipe: String { "patch-\(filename)" }
+    var patchFile: String { "patched-\(game).swf" }
+    var settingsFile: String { self == .four ? "settings-zm4.json" : "settings.json" }
+    var statusFile: String { self == .four ? "status-zm4.json" : "status.json" }
+    var baseURL: String {
+        "https://sda.4399.com/4399swf/upload_swf/" +
+            (self == .four ? "ftp15/csya/20150127/1/" : "ftp22/csya/20170622/1/")
+    }
+    var gameURL: String { baseURL + filename + ".swf" }
+    var referer: String { baseURL + filename + (self == .four ? "gg.htm" : "d.htm") }
+}
+
 final class AttackApp: NSObject, NSApplicationDelegate {
     private var client: URL {
         let paths = [UserDefaults.standard.string(forKey: "clientPath"),
@@ -48,20 +67,25 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
     private let support = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/ZMXYDropControl")
-    private let proto = "zm5-attack-1.2"
+    private var chapter: GameChapter = .five
+    private var proto: String { chapter.protocolName }
     private var window: NSWindow!
-    private let field = NSTextField(string: "1")
-    private let status = NSTextField(wrappingLabelWithString: "先接入游戏，再应用倍率。")
-    private var multiplier: Int64 = 1
+    private var field = NSTextField(string: "1")
+    private var status = NSTextField(wrappingLabelWithString: "先接入游戏，再应用倍率。")
+    private var multipliers: [GameChapter: Int64] = [.four: 1, .five: 1]
+    private var multiplier: Int64 {
+        get { multipliers[chapter] ?? 1 }
+        set { multipliers[chapter] = newValue }
+    }
     private var timer: Timer?
-    private var downloading = false
+    private var downloadingChapter: GameChapter?
     private var messageUntil = Date.distantPast
 
     private let ink = NSColor(calibratedWhite: 0.14, alpha: 1)
     private let muted = NSColor(calibratedWhite: 0.43, alpha: 1)
     private let amber = NSColor(calibratedRed: 0.70, green: 0.43, blue: 0.11, alpha: 1)
     private let surface = NSColor(calibratedRed: 0.98, green: 0.98, blue: 0.97, alpha: 1)
-    private let connection = NSTextField(labelWithString: "游戏未打开")
+    private var connection = NSTextField(labelWithString: "游戏未打开")
 
     private func label(_ text: String, size: CGFloat = 14, weight: NSFont.Weight = .regular,
                        secondary: Bool = false) -> NSTextField {
@@ -101,34 +125,61 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         window.appearance = NSAppearance(named: .aqua)
         window.backgroundColor = surface
         window.isReleasedWhenClosed = false
+        buildInterface()
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
+        tick()
+    }
+
+    @objc private func selectChapter(_ sender: NSButton) {
+        guard let selected = GameChapter(rawValue: sender.tag), selected != chapter else { return }
+        chapter = selected
+        messageUntil = .distantPast
+        buildInterface()
+        if let downloading = downloadingChapter {
+            show("正在下载并校验造梦\(downloading.rawValue)游戏文件…")
+            messageUntil = .distantFuture
+        }
+        tick()
+    }
+
+    private func buildInterface() {
+        field = NSTextField(string: String(multiplier))
+        status = NSTextField(wrappingLabelWithString: "")
+        connection = NSTextField(labelWithString: "游戏未打开")
+        window.contentView = NSView()
         let content = window.contentView!
 
         let chapters = row([], spacing: 0)
         chapters.distribution = .fillEqually
-        for chapter in 1...5 {
-            let supported = chapter == 5
-            let title = label("造梦\(chapter)", size: 16, weight: supported ? .semibold : .regular,
-                              secondary: !supported)
-            title.alignment = .center
-            let detail = label(supported ? "当前章节" : "暂未支持", size: 11, secondary: true)
+        for number in 1...5 {
+            let available = GameChapter(rawValue: number) != nil
+            let selected = chapter.rawValue == number
+            let title = NSButton(title: "造梦\(number)", target: self, action: #selector(selectChapter(_:)))
+            title.tag = number
+            title.isEnabled = available
+            title.isBordered = false
+            title.font = .systemFont(ofSize: 16, weight: selected ? .semibold : .regular)
+            title.contentTintColor = selected ? amber : (available ? ink : muted)
+            title.setAccessibilityLabel("造梦\(number)，\(selected ? "当前章节" : (available ? "切换章节" : "暂未支持"))")
+            let detail = label(selected ? "当前章节" : (available ? "点击切换" : "暂未支持"), size: 11, secondary: true)
             detail.alignment = .center
             let item = NSStackView(views: [title, detail])
             item.orientation = .vertical
             item.spacing = 3
             item.wantsLayer = true
-            item.layer?.backgroundColor = supported
+            item.layer?.backgroundColor = selected
                 ? NSColor(calibratedRed: 1, green: 0.95, blue: 0.87, alpha: 1).cgColor : surface.cgColor
-            if supported { title.textColor = amber }
             item.heightAnchor.constraint(equalToConstant: 60).isActive = true
-            item.setAccessibilityElement(true)
-            item.setAccessibilityLabel("造梦\(chapter)，\(supported ? "当前章节" : "暂未支持")")
             chapters.addArrangedSubview(item)
         }
         chapters.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(chapters)
 
-        let heading = row([label("造梦西游 5", size: 18, weight: .semibold),
-                           label("上古天帝篇", secondary: true), stretch(), connection,
+        let heading = row([label("造梦西游 \(chapter.rawValue)", size: 18, weight: .semibold),
+                           label(chapter.title, secondary: true), stretch(), connection,
                            button("接入并打开游戏", #selector(connect))])
         connection.font = .systemFont(ofSize: 12)
         connection.textColor = muted
@@ -180,9 +231,9 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         status.heightAnchor.constraint(equalToConstant: 40).isActive = true
         let stack = NSStackView(views: [heading, line(),
             label("攻击倍率", size: 30, weight: .semibold),
-            label("角色、宠物、幻兽 · 仅单人副本", size: 16, secondary: true),
+            label(chapter == .four ? "本人角色 · 仅单人副本" : "角色、宠物、幻兽 · 仅单人副本", size: 16, secondary: true),
             inputRow, feedback,
-            label("普通与技能伤害生效，独立真实伤害不变。", secondary: true),
+            label(chapter == .four ? "本人角色的普通与技能伤害生效。" : "普通与技能伤害生效，独立真实伤害不变。", secondary: true),
             status, line(), label("游戏接入", size: 20, weight: .semibold),
             label("首次使用：从官方准备客户端和游戏文件，再接入游戏。", secondary: true),
             row([button("官方客户端", #selector(downloadClient)),
@@ -205,11 +256,6 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             stack.topAnchor.constraint(equalTo: chapters.bottomAnchor, constant: 22),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -20)
         ])
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
-        tick()
     }
 
     private func makeMenu() {
@@ -217,7 +263,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         let item = NSMenuItem()
         menu.addItem(item)
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "退出造梦西游5攻击助手", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "退出造梦西游攻击助手", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.submenu = appMenu
         let editItem = NSMenuItem(title: "编辑", action: nil, keyEquivalent: "")
         let editMenu = NSMenu(title: "编辑")
@@ -240,11 +286,13 @@ final class AttackApp: NSObject, NSApplicationDelegate {
 
     private func writeSettings(expired: Bool = false) throws {
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
-        let value: [String: Any] = ["protocol": proto, "game": "zm5",
-            "attack_multiplier": expired ? 1 : multiplier,
-            "updated_at": expired ? 0 : Date().timeIntervalSince1970 * 1000]
-        try JSONSerialization.data(withJSONObject: value)
-            .write(to: support.appendingPathComponent("settings.json"), options: .atomic)
+        for game in GameChapter.allCases {
+            let value: [String: Any] = ["protocol": game.protocolName, "game": game.game,
+                "attack_multiplier": expired ? 1 : (multipliers[game] ?? 1),
+                "updated_at": expired ? 0 : Date().timeIntervalSince1970 * 1000]
+            try JSONSerialization.data(withJSONObject: value)
+                .write(to: support.appendingPathComponent(game.settingsFile), options: .atomic)
+        }
     }
 
     private func show(_ text: String) {
@@ -277,7 +325,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             let source = Bundle.main.resourceURL!.appendingPathComponent(name)
             try Data(contentsOf: source).write(to: support.appendingPathComponent(name), options: .atomic)
         }
-        try patch.write(to: support.appendingPathComponent("patched-zm5.swf"), options: .atomic)
+        try patch.write(to: support.appendingPathComponent(chapter.patchFile), options: .atomic)
         if !current.hasPrefix("// ZMXY_DROP_CONTROL_BEGIN\n") {
             let backup = support.appendingPathComponent("main-before-zm5-only-\(Int(Date().timeIntervalSince1970)).js")
             try current.write(to: backup, atomically: true, encoding: .utf8)
@@ -290,6 +338,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func connect() {
+        let targetChapter = chapter
         do {
             if runningGame() != nil {
                 show("请保存并完全退出游戏，再点击接入，以便更新客户端名称和模块。"); return
@@ -297,7 +346,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             try prepareClient(); try install(); try signClient(); try writeSettings()
             NSWorkspace.shared.openApplication(at: client, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
                 DispatchQueue.main.async {
-                    self?.show(error.map { "打开失败：\($0.localizedDescription)" } ?? "客户端已打开，请进入造梦西游5。")
+                    self?.show(error.map { "打开失败：\($0.localizedDescription)" } ?? "客户端已打开，请进入造梦西游\(targetChapter.rawValue)。")
                 }
             }
         } catch { show("接入失败：\(error.localizedDescription)") }
@@ -305,26 +354,26 @@ final class AttackApp: NSObject, NSApplicationDelegate {
 
     private func localPatch() throws -> Data {
         let recipe = try JSONDecoder().decode(PatchRecipe.self,
-            from: Data(contentsOf: Bundle.main.url(forResource: "patch-v4780", withExtension: "json")!))
+            from: Data(contentsOf: Bundle.main.url(forResource: chapter.recipe, withExtension: "json")!))
         func verified(_ url: URL) -> Data? {
             guard let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
                   size > 0, size < 32_000_000, let data = try? Data(contentsOf: url) else { return nil }
             return try? recipe.apply(data)
         }
-        for url in [support.appendingPathComponent("patched-zm5.swf"),
-                    Bundle.main.resourceURL!.appendingPathComponent("patched-zm5.swf")] {
+        for url in [support.appendingPathComponent(chapter.patchFile),
+                    Bundle.main.resourceURL!.appendingPathComponent(chapter.patchFile)] {
             if let data = verified(url) { return data }
         }
         let panel = NSOpenPanel()
-        panel.title = "选择造梦5 V47.8游戏文件"
-        panel.message = "请选择从官方自行下载的 v4780.swf。助手只在本机生成补丁；已有此版补丁也可使用。"
+        panel.title = "选择造梦\(chapter.rawValue) \(chapter.version)游戏文件"
+        panel.message = "请选择从官方自行下载的 \(chapter.filename).swf。助手只在本机生成补丁；已有此版补丁也可使用。"
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else {
             throw NSError(domain: "ZMXY", code: 1, userInfo: [NSLocalizedDescriptionKey: "已取消选择本地补丁。"])
         }
         guard let data = verified(url) else {
-            throw NSError(domain: "ZMXY", code: 2, userInfo: [NSLocalizedDescriptionKey: "补丁校验不符，请使用此版本支持的 V47.8 补丁。"])
+            throw NSError(domain: "ZMXY", code: 2, userInfo: [NSLocalizedDescriptionKey: "补丁校验不符，请使用造梦\(chapter.rawValue) \(chapter.version)官方文件。"])
         }
         return data
     }
@@ -334,17 +383,22 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func downloadGame() {
-        guard !downloading else { return }
+        if let downloading = downloadingChapter {
+            show("正在下载造梦\(downloading.rawValue)游戏文件，请稍候。")
+            messageUntil = .distantFuture
+            return
+        }
+        let chapter = self.chapter
         let panel = NSSavePanel()
-        panel.title = "从4399官方保存 V47.8 原始游戏文件"
-        panel.nameFieldStringValue = "v4780.swf"
+        panel.title = "从4399官方保存造梦\(chapter.rawValue) \(chapter.version) 原始游戏文件"
+        panel.nameFieldStringValue = chapter.filename + ".swf"
         panel.allowedContentTypes = [UTType(filenameExtension: "swf") ?? .data]
         guard panel.runModal() == .OK, let destination = panel.url else { return }
-        downloading = true
+        downloadingChapter = chapter
         show("正在从4399官方源下载并校验游戏文件…")
         messageUntil = .distantFuture
-        var request = URLRequest(url: URL(string: "https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf")!)
-        request.setValue("https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780d.htm", forHTTPHeaderField: "Referer")
+        var request = URLRequest(url: URL(string: chapter.gameURL)!)
+        request.setValue(chapter.referer, forHTTPHeaderField: "Referer")
         request.timeoutInterval = 60
         URLSession.shared.downloadTask(with: request) { [weak self] file, response, error in
             let result: Result<Void, Error> = Result {
@@ -354,16 +408,16 @@ final class AttackApp: NSObject, NSApplicationDelegate {
                       size > 0, size < 32_000_000 else { throw PatchRecipe.invalid() }
                 let data = try Data(contentsOf: file)
                 let recipe = try JSONDecoder().decode(PatchRecipe.self,
-                    from: Data(contentsOf: Bundle.main.url(forResource: "patch-v4780", withExtension: "json")!))
+                    from: Data(contentsOf: Bundle.main.url(forResource: chapter.recipe, withExtension: "json")!))
                 let original = try PatchRecipe.unpack(data)
                 guard PatchRecipe.hash(original) == recipe.sourceHash else { throw PatchRecipe.invalid() }
                 try data.write(to: destination, options: .atomic)
             }
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                self.downloading = false
+                self.downloadingChapter = nil
                 switch result {
-                case .success: self.show("官方游戏文件已保存。接入时选择该文件即可。")
+                case .success: self.show("造梦\(chapter.rawValue)官方游戏文件已保存。接入时选择该文件即可。")
                 case .failure(let error): self.show("官方下载失败：\(error.localizedDescription)")
                 }
             }
@@ -432,7 +486,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         connection.stringValue = game == nil ? "游戏未打开" : "客户端运行中"
         guard Date() > messageUntil else { return }
         guard let game = game else { status.stringValue = "游戏客户端未打开。"; return }
-        guard let data = try? Data(contentsOf: support.appendingPathComponent("status.json")),
+        guard let data = try? Data(contentsOf: support.appendingPathComponent(chapter.statusFile)),
               let value = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               value["protocol"] as? String == proto,
               (value["pid"] as? NSNumber)?.int32Value == game.processIdentifier,
@@ -442,11 +496,11 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         }
         if let error = value["error"] as? String, !error.isEmpty { status.stringValue = error; return }
         guard value["patched_loaded"] as? Bool == true else {
-            status.stringValue = "已连接客户端，请进入造梦西游5（当前补丁适配 V47.8）。"; return
+            status.stringValue = "已连接客户端，请进入造梦西游\(chapter.rawValue)（当前补丁适配 \(chapter.version)）。"; return
         }
         if let base = value["base_attack"] as? Double, let power = value["effective_attack"] as? Double {
             status.stringValue = String(format: "已接入 · 当前 %lld 倍 · 最近伤害 %.0f → %.0f", multiplier, base, power)
-        } else { status.stringValue = "造梦西游5已接入 · 当前 \(multiplier) 倍，等待战斗伤害。" }
+        } else { status.stringValue = "造梦西游\(chapter.rawValue)已接入 · 当前 \(multiplier) 倍，等待战斗伤害。" }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }

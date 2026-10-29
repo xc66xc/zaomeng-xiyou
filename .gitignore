@@ -33,3 +33,6 @@
 !/assets/preview.png
 !/assets/alipay.png
 !/assets/wechat-pay.png
+
+!/zm5-only/patch-v5880.json
+!/tools/build_patch4.py
