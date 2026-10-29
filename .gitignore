@@ -27,3 +27,9 @@
 !/zm5-only/patch-v4780.json
 !/zm5-only/tests/
 !/tools/make_delta.py
+
+!/assets/
+/assets/*
+!/assets/preview.png
+!/assets/alipay.png
+!/assets/wechat-pay.png

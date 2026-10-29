@@ -4,6 +4,12 @@
 
 仓库：https://github.com/xc66xc/zaomeng-xiyou
 
+## 项目预览
+
+当前正式版的攻击倍率面板，支持调整倍率、恢复1倍，以及下载官方依赖并接入游戏。
+
+![造梦西游5攻击倍率助手界面](assets/preview.png)
+
 ## 下载与使用
 
 从本仓库 **Releases** 下载 `macos-arm64.zip`，解压后打开「造梦西游攻击助手.app」。软件版本以 `zm5-only/Info.plist` 为唯一来源。
@@ -57,3 +63,15 @@ CI验证倍率逻辑、输入校验、协议、章节隔离、复制粘贴快捷
 ## 许可
 
 MIT只覆盖本仓库自写代码，见LICENSE。第三方游戏、客户端、Flash及美术不在许可范围内，也不在发布包中。macOS系统提供解压库实现，本仓库只包含接口调用。不要上传账号、存档、个人截图、第三方游戏文件或下载工具本体。
+
+## 赞赏支持
+
+项目免费开源。如果对你有帮助，欢迎自愿赞赏支持。
+
+<table>
+  <tr><th>支付宝</th><th>微信支付</th></tr>
+  <tr>
+    <td><img src="assets/alipay.png" alt="支付宝赞赏二维码" width="240"></td>
+    <td><img src="assets/wechat-pay.png" alt="微信支付赞赏二维码" width="240"></td>
+  </tr>
+</table>
