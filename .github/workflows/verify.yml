@@ -4,6 +4,12 @@ on:
     branches: ['**']
     tags: ['v*']
   pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated version tag to publish
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
@@ -11,6 +17,8 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -26,27 +34,33 @@ jobs:
           test -z "$(find "$RUNNER_TEMP/造梦西游攻击助手.app" -iname '*.swf' -print)"
       - run: python3 -m py_compile tools/build_patch.py tools/make_delta.py
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: verify
     runs-on: macos-14
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ inputs.tag || github.ref }}
       - name: Verify immutable annotated version tag from main
         run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git fetch origin "+refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse "$RELEASE_TAG^{}")"
           version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' zm5-only/Info.plist)
-          test "$GITHUB_REF_NAME" = "v$version"
-          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          test "$RELEASE_TAG" = "v$version"
+          test "$(git cat-file -t "$RELEASE_TAG")" = tag
           git merge-base --is-ancestor HEAD origin/main
       - name: Build and package
         run: |
           mkdir -p dist
           ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh "$RUNNER_TEMP/造梦西游攻击助手.app"
           test -z "$(find "$RUNNER_TEMP/造梦西游攻击助手.app" -iname '*.swf' -print)"
-          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/造梦西游攻击助手.app" "dist/zaomeng-xiyou-$GITHUB_REF_NAME-macos-arm64.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/造梦西游攻击助手.app" "dist/zaomeng-xiyou-$RELEASE_TAG-macos-arm64.zip"
           (cd dist && shasum -a 256 *.zip > SHA256SUMS)
       - name: Publish official Release
         env:
@@ -63,4 +77,4 @@ jobs:
           - 接入前保存并完全退出游戏；接入将把所选客户端本地改名为“造梦西游”，并打开4399官方游戏入口。
           - SHA256SUMS用于校验下载完整性，不能代替签名。构建与本地补丁匹配已验证，其他用户机器与在线战斗不作已实测声明。
           NOTES
-          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/SHA256SUMS --verify-tag --title "$GITHUB_REF_NAME · 造梦西游攻击助手" --generate-notes --notes-file "$RUNNER_TEMP/notes.md"
+          gh release create "$RELEASE_TAG" dist/*.zip dist/SHA256SUMS --verify-tag --title "$RELEASE_TAG · 造梦西游攻击助手" --generate-notes --notes-file "$RUNNER_TEMP/notes.md"
