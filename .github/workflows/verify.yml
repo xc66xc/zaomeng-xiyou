@@ -1,5 +1,9 @@
 name: CI
-on: [push, pull_request]
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
 permissions:
   contents: read
 jobs:
@@ -11,5 +15,52 @@ jobs:
         with:
           node-version: '22'
       - run: node --test zm5-only/attack.test.cjs
-      - run: swiftc -typecheck zm5-only/main.swift -framework AppKit
-      - run: python3 -m py_compile tools/build_patch.py
+      - name: Test local patch engine with generated data
+        run: |
+          clang -c zm5-only/PatchDecoder.c -o "$RUNNER_TEMP/decoder.o"
+          swiftc -import-objc-header zm5-only/PatchDecoder.h zm5-only/PatchEngine.swift zm5-only/tests/main.swift "$RUNNER_TEMP/decoder.o" -llzma -lz -o "$RUNNER_TEMP/patch-test"
+          "$RUNNER_TEMP/patch-test"
+      - name: Build distributable without game resources
+        run: |
+          ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh "$RUNNER_TEMP/造梦西游攻击助手.app"
+          test -z "$(find "$RUNNER_TEMP/造梦西游攻击助手.app" -iname '*.swf' -print)"
+      - run: python3 -m py_compile tools/build_patch.py tools/make_delta.py
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: verify
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify immutable annotated version tag from main
+        run: |
+          version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' zm5-only/Info.plist)
+          test "$GITHUB_REF_NAME" = "v$version"
+          test "$(git cat-file -t "$GITHUB_REF_NAME")" = tag
+          git merge-base --is-ancestor HEAD origin/main
+      - name: Build and package
+        run: |
+          mkdir -p dist
+          ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh "$RUNNER_TEMP/造梦西游攻击助手.app"
+          test -z "$(find "$RUNNER_TEMP/造梦西游攻击助手.app" -iname '*.swf' -print)"
+          ditto -c -k --sequesterRsrc --keepParent "$RUNNER_TEMP/造梦西游攻击助手.app" "dist/zaomeng-xiyou-$GITHUB_REF_NAME-macos-arm64.zip"
+          (cd dist && shasum -a 256 *.zip > SHA256SUMS)
+      - name: Publish official Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
+          ## 下载与首次使用
+          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；目前只支持造梦5 V47.8攻击倍率。
+          - 仅 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证。首次打开可能需要系统安全确认；Intel客户端在Apple Silicon上可能需要Rosetta。
+          - 不含客户端、Flash或完整游戏SWF。用户须自行从官方来源下载安装依赖，不能把手游当成兼容客户端。
+          - 官方客户端入口：https://webres.61.com/common/flash/common_micro.html?game=mole
+          - 官方原始游戏文件：https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf
+          - 首次接入时选择本地兼容客户端及原始SWF；助手仅在本机校验并生成补丁。已有兼容本地补丁可复用。
+          - 接入前保存并完全退出游戏；接入将把所选客户端本地改名为“造梦西游”，并打开4399官方游戏入口。
+          - SHA256SUMS用于校验下载完整性，不能代替签名。构建与本地补丁匹配已验证，其他用户机器与在线战斗不作已实测声明。
+          NOTES
+          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/SHA256SUMS --verify-tag --title "$GITHUB_REF_NAME · 造梦西游攻击助手" --generate-notes --notes-file "$RUNNER_TEMP/notes.md"

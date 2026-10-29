@@ -1,5 +1,6 @@
 'use strict';
-const {app,globalShortcut}=require('electron');
+const {app,globalShortcut,Menu}=require('electron');
+if (typeof app.setName === 'function') app.setName('造梦西游');
 const fs=require('fs').promises;
 const path=require('path');
 const updateAttack=require('./attack.cjs');
@@ -14,6 +15,13 @@ let busy=false,stopped=false,patch;
 app.once('ready',()=>process.nextTick(()=>{
   globalShortcut.unregister('CommandOrControl+C');
   globalShortcut.unregister('CommandOrControl+V');
+  if (Menu && typeof Menu.getApplicationMenu === 'function') {
+    const menu = Menu.getApplicationMenu();
+    if (menu && menu.items.length) {
+      menu.items[0].label = '造梦西游';
+      Menu.setApplicationMenu(menu);
+    }
+  }
 }));
 
 function validConfig(value) {

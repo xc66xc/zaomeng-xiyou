@@ -21,3 +21,9 @@
 **/AGENTS.md
 **/agent.md
 **/__pycache__/
+!/zm5-only/PatchEngine.swift
+!/zm5-only/PatchDecoder.h
+!/zm5-only/PatchDecoder.c
+!/zm5-only/patch-v4780.json
+!/zm5-only/tests/
+!/tools/make_delta.py
