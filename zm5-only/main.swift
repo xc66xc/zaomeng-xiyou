@@ -40,6 +40,49 @@ private final class HelperButton: NSButton {
     }
 }
 
+// Each chapter is a full-size native button: mouse, keyboard and AX share one target.
+private final class ChapterButton: NSButton {
+    var drawsDivider = false
+    private let selectedFill = NSColor(calibratedRed: 1, green: 0.94, blue: 0.83, alpha: 1)
+    private let selectedInk = NSColor(calibratedRed: 0.60, green: 0.35, blue: 0.06, alpha: 1)
+    private let selectedBorder = NSColor(calibratedRed: 0.88, green: 0.62, blue: 0.22, alpha: 1)
+    private let divider = NSColor(calibratedWhite: 0.78, alpha: 1)
+
+    override var intrinsicContentSize: NSSize { NSSize(width: 100, height: 52) }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let selected = state == .on
+        let fill = selected ? selectedFill : NSColor(calibratedWhite: 0.99, alpha: 1)
+        (isHighlighted ? fill.blended(withFraction: 0.06, of: .black)! : fill).setFill()
+        bounds.fill()
+        if selected {
+            selectedBorder.setStroke()
+            let border = NSBezierPath(rect: bounds.insetBy(dx: 0.5, dy: 0.5))
+            border.lineWidth = 1
+            border.stroke()
+        } else if drawsDivider {
+            divider.setStroke()
+            let line = NSBezierPath()
+            line.move(to: NSPoint(x: bounds.maxX - 0.5, y: bounds.minY))
+            line.line(to: NSPoint(x: bounds.maxX - 0.5, y: bounds.maxY))
+            line.lineWidth = 1
+            line.stroke()
+        }
+        let text = NSAttributedString(string: title, attributes: [
+            .font: NSFont.systemFont(ofSize: 17, weight: .semibold),
+            .foregroundColor: selected ? selectedInk : NSColor(calibratedWhite: 0.16, alpha: 1)
+        ])
+        let size = text.size()
+        text.draw(at: NSPoint(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2))
+        if window?.firstResponder === self {
+            NSColor.keyboardFocusIndicatorColor.setStroke()
+            let focus = NSBezierPath(roundedRect: bounds.insetBy(dx: 3, dy: 3), xRadius: 4, yRadius: 4)
+            focus.lineWidth = 2
+            focus.stroke()
+        }
+    }
+}
+
 private enum GameChapter: Int, CaseIterable {
     case one = 1, two = 2, three = 3, four = 4, five = 5
     var game: String { "zm\(rawValue)" }
@@ -243,7 +286,12 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func selectChapter(_ sender: NSButton) {
-        guard let selected = GameChapter(rawValue: sender.tag), selected != chapter else { return }
+        guard let selected = GameChapter(rawValue: sender.tag) else { return }
+        guard selected != chapter else {
+            sender.state = .on
+            sender.needsDisplay = true
+            return
+        }
         // Finish editing while callbacks still address the previous chapter.
         window.makeFirstResponder(nil)
         chapter = selected
@@ -266,25 +314,21 @@ final class AttackApp: NSObject, NSApplicationDelegate {
 
         let chapters = row([], spacing: 0)
         chapters.distribution = .fillEqually
-        for number in 1...5 {
-            let available = GameChapter(rawValue: number) != nil
-            let selected = chapter.rawValue == number
-            let title = NSButton(title: "造梦\(number)", target: self, action: #selector(selectChapter(_:)))
-            title.tag = number
-            title.isEnabled = available
-            title.isBordered = false
-            title.font = .systemFont(ofSize: 16, weight: selected ? .semibold : .regular)
-            title.contentTintColor = selected ? amber : (available ? ink : muted)
-            title.setAccessibilityLabel("造梦\(number)，\(selected ? "当前章节" : (available ? "切换章节" : "暂未支持"))")
-            let detail = label(selected ? "当前章节" : (available ? "点击切换" : "暂未支持"), size: 11, secondary: true)
-            detail.alignment = .center
-            let item = NSStackView(views: [title, detail])
-            item.orientation = .vertical
-            item.spacing = 3
-            item.wantsLayer = true
-            item.layer?.backgroundColor = selected
-                ? NSColor(calibratedRed: 1, green: 0.95, blue: 0.87, alpha: 1).cgColor : surface.cgColor
-            item.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        chapters.wantsLayer = true
+        chapters.layer?.cornerRadius = 8
+        chapters.layer?.masksToBounds = true
+        chapters.layer?.borderWidth = 1
+        chapters.layer?.borderColor = NSColor(calibratedWhite: 0.78, alpha: 1).cgColor
+        for game in GameChapter.allCases {
+            let selected = chapter == game
+            let item = ChapterButton(title: "造梦\(game.rawValue)", target: self, action: #selector(selectChapter(_:)))
+            item.tag = game.rawValue
+            item.setButtonType(.toggle)
+            item.isBordered = false
+            item.state = selected ? .on : .off
+            item.drawsDivider = game != .five
+            item.setAccessibilityLabel("造梦\(game.rawValue)，\(selected ? "当前章节" : "切换章节")")
+            item.heightAnchor.constraint(equalToConstant: 52).isActive = true
             chapters.addArrangedSubview(item)
         }
         chapters.translatesAutoresizingMaskIntoConstraints = false
@@ -368,9 +412,9 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }
         NSLayoutConstraint.activate([
-            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            chapters.topAnchor.constraint(equalTo: content.topAnchor),
+            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 20),
+            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
+            chapters.topAnchor.constraint(equalTo: content.topAnchor, constant: 20),
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 30),
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -30),
             stack.topAnchor.constraint(equalTo: chapters.bottomAnchor, constant: 22),
@@ -437,9 +481,9 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         content.addSubview(stack)
         for view in stack.arrangedSubviews { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
         NSLayoutConstraint.activate([
-            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            chapters.topAnchor.constraint(equalTo: content.topAnchor),
+            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 20),
+            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
+            chapters.topAnchor.constraint(equalTo: content.topAnchor, constant: 20),
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 30),
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -30),
             stack.topAnchor.constraint(equalTo: chapters.bottomAnchor, constant: 22),
@@ -552,9 +596,9 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         content.addSubview(stack)
         for view in stack.arrangedSubviews { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
         NSLayoutConstraint.activate([
-            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor),
-            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            chapters.topAnchor.constraint(equalTo: content.topAnchor),
+            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 20),
+            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -20),
+            chapters.topAnchor.constraint(equalTo: content.topAnchor, constant: 20),
             stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 30),
             stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -30),
             stack.topAnchor.constraint(equalTo: chapters.bottomAnchor, constant: 22),

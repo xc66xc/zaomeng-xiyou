@@ -6,8 +6,8 @@
 <key>CFBundleDisplayName</key><string>造梦西游攻击助手</string>
 <key>CFBundleExecutable</key><string>DropControl</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>5.8.0</string>
-<key>CFBundleVersion</key><string>11</string>
+<key>CFBundleShortVersionString</key><string>5.8.1</string>
+<key>CFBundleVersion</key><string>12</string>
 <key>LSMinimumSystemVersion</key><string>12.0</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
