@@ -7,6 +7,8 @@ const {URL}=require('url');
 const updateAttack=require('./attack.cjs');
 const home=__dirname;
 const games={
+  zm1:{protocol:'zm1-helper-1.0',settings:'settings-zm1.json',statusFile:'status-zm1.json',patch:'patched-zm1.swf',
+    url:'https://sbai.4399.com/4399swf/upload_swf/ftp5/hanbao/20110624/3/v25928.swf'},
   zm2:{protocol:'zm2-helper-1.0',settings:'settings-zm2.json',statusFile:'status-zm2.json',patch:'patched-zm2.swf',
     url:'https://sbai.4399.com/4399swf/upload_swf/ftp6/hanbao/20110927/4/v25928.swf'},
   zm5:{protocol:'zm5-attack-1.2',settings:'settings.json',statusFile:'status.json',patch:'patched-zm5.swf',

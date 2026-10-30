@@ -41,10 +41,11 @@ private final class HelperButton: NSButton {
 }
 
 private enum GameChapter: Int, CaseIterable {
-    case two = 2, three = 3, four = 4, five = 5
+    case one = 1, two = 2, three = 3, four = 4, five = 5
     var game: String { "zm\(rawValue)" }
     var protocolName: String {
         switch self {
+        case .one: return "zm1-helper-1.0"
         case .two: return "zm2-helper-1.0"
         case .three: return "zm3-helper-2.0"
         case .four: return "zm4-attack-1.0"
@@ -53,37 +54,39 @@ private enum GameChapter: Int, CaseIterable {
     }
     var hasExtendedFeatures: Bool { self == .two || self == .three }
     var title: String {
-        switch self { case .two: return "十殿阎罗篇"; case .three: return "大闹天庭篇"; case .four: return "洪荒大劫篇"; case .five: return "上古天帝篇" }
+        switch self { case .one: return "七魔王篇"; case .two: return "十殿阎罗篇"; case .three: return "大闹天庭篇"; case .four: return "洪荒大劫篇"; case .five: return "上古天帝篇" }
     }
     var version: String {
-        switch self { case .two: return "v25928"; case .three: return "v261029"; case .four: return "V58.8"; case .five: return "V47.8" }
+        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "V58.8"; case .five: return "V47.8" }
     }
     var filename: String {
-        switch self { case .two: return "v25928"; case .three: return "v261029"; case .four: return "v5880"; case .five: return "v4780" }
+        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "v5880"; case .five: return "v4780" }
     }
-    var recipe: String { "patch-\(filename)" }
+    var recipe: String { self == .one ? "patch-zm1-v25928" : "patch-\(filename)" }
     var patchFile: String { "patched-\(game).swf" }
     var settingsFile: String { self == .five ? "settings.json" : "settings-\(game).json" }
     var statusFile: String { self == .five ? "status.json" : "status-\(game).json" }
     var baseURL: String {
         let path: String
         switch self {
+        case .one: path = "ftp5/hanbao/20110624/3/"
         case .two: path = "ftp6/hanbao/20110927/4/"
         case .three: path = "ftp7/hanbao/20120107/6/"
         case .four: path = "ftp15/csya/20150127/1/"
         case .five: path = "ftp22/csya/20170622/1/"
         }
-        let host = self == .two ? "sbai.4399.com" : "sda.4399.com"
+        let host = (self == .one || self == .two) ? "sbai.4399.com" : "sda.4399.com"
         return "https://\(host)/4399swf/upload_swf/" + path
     }
     var gameURL: String { baseURL + filename + ".swf" }
     var referer: String {
         let suffix: String
-        switch self { case .two, .three: suffix = ".htm"; case .four: suffix = "gg.htm"; case .five: suffix = "d.htm" }
+        switch self { case .one, .two, .three: suffix = ".htm"; case .four: suffix = "gg.htm"; case .five: suffix = "d.htm" }
         return baseURL + filename + suffix
     }
     var scopeLabel: String {
         switch self {
+        case .one: return "悟空、唐僧与唐僧分身 · 仅本地角色"
         case .two: return "本地双人角色 · 唐僧回血不变"
         case .three: return "四角色 · 仅本地副本"
         case .four: return "本人角色 · 仅单人副本"
@@ -92,6 +95,7 @@ private enum GameChapter: Int, CaseIterable {
     }
     var scopeNote: String {
         switch self {
+        case .one: return "普通与技能伤害生效，唐僧和分身的回血动作不变。"
         case .two: return "普通与技能伤害生效，唐僧与影子的回血动作不变。"
         case .three: return "仅修改本地角色伤害，回血、辅助和联网竞技模式不变。"
         case .four: return "本人角色的普通与技能伤害生效。"
@@ -113,12 +117,13 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private var field = NSTextField(string: "1")
     private var status = NSTextField(wrappingLabelWithString: "先接入游戏，再应用倍率。")
-    private var multipliers: [GameChapter: Int64] = [.two: 1, .three: 1, .four: 1, .five: 1]
+    private var multipliers: [GameChapter: Int64] = [.one: 1, .two: 1, .three: 1, .four: 1, .five: 1]
     private var multiplier: Int64 {
         get { multipliers[chapter] ?? 1 }
         set { multipliers[chapter] = newValue }
     }
     private var featureSettings: [GameChapter: [String: Any]] = [
+        .one: ["mode": "original", "multiplier": 1],
         .two: ["mode": "original", "multiplier": 1, "boss_drop_enabled": false,
             "boss_drop_item": "", "strength_guaranteed": false, "fusion_guaranteed": false],
         .three: ["mode": "original", "multiplier": 1, "experience_multiplier": 1,
@@ -242,7 +247,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         // Finish editing while callbacks still address the previous chapter.
         window.makeFirstResponder(nil)
         chapter = selected
-        window.setContentSize(NSSize(width: 760, height: chapter.hasExtendedFeatures ? 740 : 620))
+        window.setContentSize(NSSize(width: 760, height: (chapter == .one || chapter.hasExtendedFeatures) ? 740 : 620))
         messageUntil = .distantPast
         buildInterface()
         if let downloading = downloadingChapter {
@@ -284,6 +289,10 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         }
         chapters.translatesAutoresizingMaskIntoConstraints = false
         content.addSubview(chapters)
+        if chapter == .one {
+            buildChapterOneInterface(content: content, chapters: chapters)
+            return
+        }
         if chapter.hasExtendedFeatures {
             buildExtendedInterface(content: content, chapters: chapters)
             return
@@ -391,6 +400,51 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         value.state = extras[key] as? Bool == true ? .on : .off
         value.font = .systemFont(ofSize: 14)
         return value
+    }
+
+    private func buildChapterOneInterface(content: NSView, chapters: NSView) {
+        let heading = row([label("造梦西游 1", size: 20, weight: .semibold),
+            label(chapter.title, secondary: true), stretch(), connection,
+            button("接入并打开游戏", #selector(connect))])
+        connection.font = .systemFont(ofSize: 12)
+        connection.textColor = muted
+        connection.setAccessibilityLabel("客户端运行状态")
+        field = smallField(Int(multiplier), label: "攻击倍率，1～2147483647")
+        field.target = self; field.action = #selector(apply)
+        let attackRow = row([field, label("倍", secondary: true),
+            button("应用", #selector(apply)), button("恢复 1 倍", #selector(reset)), stretch()])
+        featureMode = popup(["原始爆率", "爆率倍率", "必掉"], label: "爆率模式", action: #selector(applyFeatures))
+        let modes = ["original", "multiplier", "guaranteed"]
+        featureMode.selectItem(at: modes.firstIndex(of: extras["mode"] as? String ?? "original") ?? 0)
+        dropField = smallField(extras["multiplier"] as? Int ?? 1, label: "爆率倍率，1～1000")
+        dropField.target = self; dropField.action = #selector(applyFeatures)
+        status.font = .systemFont(ofSize: 12); status.textColor = muted
+        status.setAccessibilityLabel("操作与接入结果")
+        status.heightAnchor.constraint(equalToConstant: 38).isActive = true
+        let stack = NSStackView(views: [heading, line(),
+            label("攻击倍率", size: 24, weight: .semibold),
+            label(chapter.scopeLabel, size: 14, secondary: true), attackRow,
+            label(chapter.scopeNote, size: 12, secondary: true), line(),
+            label("装备爆率", size: 24, weight: .semibold),
+            row([featureMode, dropField, label("倍 · 1～1000", secondary: true),
+                button("应用设置", #selector(applyFeatures)), stretch()]),
+            label("按怪物原有装备掉落表生成，概率最高 100%；不改变任务和关卡奖励。", size: 12, secondary: true),
+            status, line(),
+            row([button("官方客户端", #selector(downloadClient)), button("官方游戏文件", #selector(downloadGame)), stretch()]),
+            label("首次或更新后：保存并完全退出游戏，再接入。仅支持造梦1 \(chapter.version)。\n攻击倍率 1～2147483647；退出助手后约 4 秒恢复原始倍率与爆率。", size: 12, secondary: true)])
+        stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(stack)
+        for view in stack.arrangedSubviews { view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
+        NSLayoutConstraint.activate([
+            chapters.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            chapters.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            chapters.topAnchor.constraint(equalTo: content.topAnchor),
+            stack.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 30),
+            stack.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -30),
+            stack.topAnchor.constraint(equalTo: chapters.bottomAnchor, constant: 22),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: content.bottomAnchor, constant: -20)
+        ])
     }
 
     private func buildExtendedInterface(content: NSView, chapters: NSView) {
@@ -515,7 +569,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
 
     @discardableResult private func saveFeatures() -> Bool {
-        guard chapter.hasExtendedFeatures else { return true }
+        guard chapter == .one || chapter.hasExtendedFeatures else { return true }
         if featurePage == 0 {
             func integer(_ field: NSTextField) -> Int? {
                 let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -534,9 +588,11 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             }
             extras["mode"] = ["original", "multiplier", "guaranteed"][max(0, featureMode.indexOfSelectedItem)]
             extras["multiplier"] = drop
-            extras["boss_drop_enabled"] = bossToggle.state == .on
-            let index = bossChoice.indexOfSelectedItem
-            extras["boss_drop_item"] = bossCatalog.indices.contains(index) ? bossCatalog[index]["id"] : ""
+            if chapter.hasExtendedFeatures {
+                extras["boss_drop_enabled"] = bossToggle.state == .on
+                let index = bossChoice.indexOfSelectedItem
+                extras["boss_drop_item"] = bossCatalog.indices.contains(index) ? bossCatalog[index]["id"] : ""
+            }
         } else if featurePage == 1 {
             extras["strength_guaranteed"] = strengthToggle.state == .on
             if chapter == .two {
@@ -678,9 +734,9 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             var value: [String: Any] = ["protocol": game.protocolName, "game": game.game,
                 "attack_multiplier": expired ? 1 : (multipliers[game] ?? 1),
                 "updated_at": expired ? 0 : Date().timeIntervalSince1970 * 1000]
-            if game.hasExtendedFeatures && !expired {
+            if (game == .one || game.hasExtendedFeatures) && !expired {
                 value.merge(featureSettings[game] ?? [:]) { _, new in new }
-                if let command = pendingCommands[game] { value["command"] = command }
+                if game.hasExtendedFeatures, let command = pendingCommands[game] { value["command"] = command }
             }
             try JSONSerialization.data(withJSONObject: value)
                 .write(to: support.appendingPathComponent(game.settingsFile), options: .atomic)
