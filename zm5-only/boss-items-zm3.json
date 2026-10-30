@@ -1,0 +1,1082 @@
+[
+  {
+    "id": "cs_fj_jt",
+    "name": "净坛",
+    "kind": "zbfj",
+    "role": "八戒",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "hylk",
+    "name": "混元龙铠",
+    "kind": "zbfj",
+    "role": "八戒",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "cs_wq_yt",
+    "name": "夷图",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xhc",
+    "name": "宣花锤",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "zjksf",
+    "name": "紫金开山斧",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ssqrhd",
+    "name": "蝴蝶",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "cs_fj_zt",
+    "name": "旃檀",
+    "kind": "zbfj",
+    "role": "唐僧",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "qyfp",
+    "name": "青云法袍",
+    "kind": "zbfj",
+    "role": "唐僧",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "smz",
+    "name": "嗜魔杖",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "kyz",
+    "name": "枯叶杖",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "hylz",
+    "name": "混元灵杖",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ssqrzr",
+    "name": "知汝",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "cs_wq_rc",
+    "name": "若禅",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "p_cycnjl",
+    "name": "丑牛精灵",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cybxjl",
+    "name": "冰雪精灵",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cysx",
+    "name": "嗜血",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cyzsjl",
+    "name": "子鼠精灵",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cyyhjl",
+    "name": "寅虎精灵",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cylhjl",
+    "name": "烈火精灵",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cykljl",
+    "name": "狂雷精灵",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cygsjl",
+    "name": "钢石精灵",
+    "kind": "zbjn",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cztk",
+    "name": "叱咤头盔",
+    "kind": "zbmz",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_czst",
+    "name": "叱咤手套",
+    "kind": "zbst",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cyst",
+    "name": "赤烟手套",
+    "kind": "zbst",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_czzx",
+    "name": "叱咤战鞋",
+    "kind": "zbxz",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cyxz",
+    "name": "赤烟战靴",
+    "kind": "zbxz",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_czkj",
+    "name": "叱咤铠甲",
+    "kind": "zbyf",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "p_cyyf",
+    "name": "赤烟铠甲",
+    "kind": "zbyf",
+    "role": "宠物",
+    "quality": "优秀",
+    "bigtype": "cwzb"
+  },
+  {
+    "id": "cs_fj_dz",
+    "name": "斗战",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "kys",
+    "name": "枯叶衫",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "zjqj",
+    "name": "紫金轻甲",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "cs_wq_qs",
+    "name": "祁水",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "zjbtg",
+    "name": "紫金镔铁棍",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ssqrcs",
+    "name": "长蛇",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "qybd",
+    "name": "青云冰刀",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "jllm",
+    "name": "卷帘绿魔",
+    "kind": "zbfj",
+    "role": "沙僧",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xhp",
+    "name": "宣花袍",
+    "kind": "zbfj",
+    "role": "沙僧",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "cs_fj_js",
+    "name": "金身",
+    "kind": "zbfj",
+    "role": "沙僧",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "kyg",
+    "name": "枯叶弓",
+    "kind": "zbwq",
+    "role": "沙僧",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ssqrmj",
+    "name": "梦江",
+    "kind": "zbwq",
+    "role": "沙僧",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "hylc",
+    "name": "混元雷叉",
+    "kind": "zbwq",
+    "role": "沙僧",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "cs_wq_ll",
+    "name": "琉璃",
+    "kind": "zbwq",
+    "role": "沙僧",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "wpqhs1",
+    "name": "1级强化石",
+    "kind": "wpqhs",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpqhs2",
+    "name": "2级强化石",
+    "kind": "wpqhs",
+    "role": "通用",
+    "quality": "优秀",
+    "bigtype": "dj"
+  },
+  {
+    "id": "yyb",
+    "name": "云阳板",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "dkhl",
+    "name": "地魁花篮",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "hehua",
+    "name": "慈心妙莲",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "nmwdnh",
+    "name": "牛魔王的怒吼",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "bjs",
+    "name": "玄风棕扇",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "sxyg",
+    "name": "神行渔鼓",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ywhl",
+    "name": "药王葫芦",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "zhyx",
+    "name": "镇魂玉箫",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "zb"
+  },
+  {
+    "id": "yyzlj",
+    "name": "阴阳斩龙剑",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "魂器",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xhz",
+    "name": "宣花坠",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "shsjt",
+    "name": "山河社稷图",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "clj",
+    "name": "苍龙戒",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "魂器",
+    "bigtype": "zb"
+  },
+  {
+    "id": "qysz",
+    "name": "青云手镯",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "_lsyxpt",
+    "name": "乱世英雄",
+    "kind": "zbtx",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "_sryxpt",
+    "name": "射日英雄",
+    "kind": "zbtx",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "_ptjsxstx",
+    "name": "救世星宿",
+    "kind": "zbtx",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ptsrdg",
+    "name": "生日蛋糕",
+    "kind": "zbtx",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "bgqmtx",
+    "name": "白骨清明",
+    "kind": "zbtx",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xns1",
+    "name": "1级仙女石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "gjs1",
+    "name": "1级攻击石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "kly1",
+    "name": "1级昆仑玉",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "sms1",
+    "name": "1级生命石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "fys1",
+    "name": "1级防御石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "mfs1",
+    "name": "1级魔法石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpsmd1",
+    "name": "一品生命丹",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpsh_1",
+    "name": "一重神火·骨凝",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpst_1",
+    "name": "一重神铁·轻羽",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpsh_3",
+    "name": "三重神火·洪荒",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpst_3",
+    "name": "三重神铁·点金",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "bxhyzzs",
+    "name": "不朽花翼制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpsc",
+    "name": "丝绸",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "jhsjjns2",
+    "name": "九环佛经2级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "jhsjjns3",
+    "name": "九环佛经3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "wpsh_2",
+    "name": "二重神火·玄黯",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpst_2",
+    "name": "二重神铁·甲麟",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpsh_5",
+    "name": "五重神火·噬灵",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_fj_jt_zzs",
+    "name": "净坛制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xssp",
+    "name": "凶兽碎片",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xleyzzs",
+    "name": "厄夜制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "sxjns2",
+    "name": "嗜血2级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "wpsh_4",
+    "name": "四重神火·生明",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpst_4",
+    "name": "四重神铁·通明",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "tmcjns2",
+    "name": "土魔刺2级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "tmcjns3",
+    "name": "土魔刺3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "syzqjns3",
+    "name": "圣域之墙3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "css_3",
+    "name": "地下3层传送石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "tss",
+    "name": "天枢石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xltszzs",
+    "name": "天殇制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xltzzzs",
+    "name": "天罪制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_wq_yt_zzs",
+    "name": "夷图制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "mpyj",
+    "name": "孟婆药剂",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "nianjhd",
+    "name": "年兽进化丹",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "tdlzjzzs",
+    "name": "提多罗吒戒制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpygs",
+    "name": "摇光石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_fj_dz_zzs",
+    "name": "斗战制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_fj_zt_zzs",
+    "name": "旃檀制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "mmwjns3",
+    "name": "木魔舞3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "wptm",
+    "name": "檀木",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xlczzzs",
+    "name": "残昼制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpdd",
+    "name": "毒丹",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "smbjns3",
+    "name": "水魔爆3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "lssp_5",
+    "name": "流石碎片5",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "hsj",
+    "name": "混色剂",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "hyjjjns3",
+    "name": "火眼金睛3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "hmzjns2",
+    "name": "火魔斩2级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "hmzjns3",
+    "name": "火魔斩3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "rls",
+    "name": "熔炼石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "mdsjns2",
+    "name": "猛毒素2级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "mdsjns3",
+    "name": "猛毒素3级技能书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "jns"
+  },
+  {
+    "id": "wpxt",
+    "name": "玄铁",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "yjpyansp",
+    "name": "玉净瓶阳碎片",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "yjpyinsp",
+    "name": "玉净瓶阴碎片",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "yhs",
+    "name": "玉衡石",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "llyzzs",
+    "name": "玲珑玉制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpzz",
+    "name": "珍珠",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_wq_ll_zzs",
+    "name": "琉璃制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "phhlzzs",
+    "name": "破幻花链制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_wq_qs_zzs",
+    "name": "祁水制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_wq_rc_zzs",
+    "name": "若禅制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "ttlpsp1",
+    "name": "通天令牌碎片一",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "ttlpsp2",
+    "name": "通天令牌碎片二",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "ttslsp1",
+    "name": "通天赦令碎片一",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "ttslsp3",
+    "name": "通天赦令碎片三",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "ttslsp2",
+    "name": "通天赦令碎片二",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "tfljzzs",
+    "name": "通风灵戒制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "优秀",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpbsz",
+    "name": "避水珠",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "cs_fj_js_zzs",
+    "name": "金身制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "dj"
+  },
+  {
+    "id": "zhhzzzs",
+    "name": "镇魂花坠制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "邪灵",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wpcsd",
+    "name": "长生丹",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "mgzhzzs",
+    "name": "马官指环制作书",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "精良",
+    "bigtype": "dj"
+  },
+  {
+    "id": "wplvdyl",
+    "name": "龙女的眼泪",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  }
+]

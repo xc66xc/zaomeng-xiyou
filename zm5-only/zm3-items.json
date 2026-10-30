@@ -1,0 +1,266 @@
+[
+  {
+    "id": "qlg",
+    "name": "虬龙棍（基础攻击350、未强化）",
+    "category": "装备",
+    "kind": "equipment",
+    "default_amount": 1,
+    "max_amount": 1
+  },
+  {
+    "id": "_lsyxpt",
+    "name": "乱世英雄",
+    "category": "称号物品",
+    "kind": "equipment",
+    "default_amount": 27,
+    "max_amount": 27
+  },
+  {
+    "id": "wpxt",
+    "name": "玄铁",
+    "category": "材料",
+    "kind": "item",
+    "default_amount": 9999,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpqhs2",
+    "name": "2级强化石",
+    "category": "材料",
+    "kind": "item",
+    "default_amount": 999,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpllz",
+    "name": "雷灵珠",
+    "category": "材料",
+    "kind": "item",
+    "default_amount": 999,
+    "max_amount": 9999
+  },
+  {
+    "id": "wplvdyl",
+    "name": "龙女的眼泪",
+    "category": "材料",
+    "kind": "item",
+    "default_amount": 999,
+    "max_amount": 9999
+  },
+  {
+    "id": "tss",
+    "name": "天枢石",
+    "category": "材料",
+    "kind": "item",
+    "default_amount": 9999,
+    "max_amount": 9999
+  },
+  {
+    "id": "sxzhs",
+    "name": "沙邪转换石",
+    "category": "转换石",
+    "kind": "item",
+    "default_amount": 999,
+    "max_amount": 9999
+  },
+  {
+    "id": "lxzhs",
+    "name": "流邪转换石",
+    "category": "转换石",
+    "kind": "item",
+    "default_amount": 999,
+    "max_amount": 9999
+  },
+  {
+    "id": "cs_wq_qs_zzs",
+    "name": "祁水制作书",
+    "category": "制作书",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_1",
+    "name": "流石碎片1",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_2",
+    "name": "流石碎片2",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_3",
+    "name": "流石碎片3",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_4",
+    "name": "流石碎片4",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_5",
+    "name": "流石碎片5",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_6",
+    "name": "流石碎片6",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_7",
+    "name": "流石碎片7",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_8",
+    "name": "流石碎片8",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "lssp_9",
+    "name": "流石碎片9",
+    "category": "流石碎片",
+    "kind": "item",
+    "default_amount": 1,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsmd3",
+    "name": "三品生命丹",
+    "category": "丹药",
+    "kind": "item",
+    "default_amount": 4,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsmd4",
+    "name": "四品生命丹",
+    "category": "丹药",
+    "kind": "item",
+    "default_amount": 5,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsmd5",
+    "name": "五品生命丹",
+    "category": "丹药",
+    "kind": "item",
+    "default_amount": 6,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsh_1",
+    "name": "一重神火·骨凝",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsh_2",
+    "name": "二重神火·玄黯",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsh_3",
+    "name": "三重神火·洪荒",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsh_4",
+    "name": "四重神火·生明",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpsh_5",
+    "name": "五重神火·噬灵",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpst_1",
+    "name": "一重神铁·轻羽",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpst_2",
+    "name": "二重神铁·甲麟",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpst_3",
+    "name": "三重神铁·点金",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpst_4",
+    "name": "四重神铁·通明",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "wpst_5",
+    "name": "五重神铁·玄光",
+    "category": "重铸材料",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 9999
+  },
+  {
+    "id": "pet_potential",
+    "name": "当前宠物潜能",
+    "category": "宠物",
+    "kind": "pet",
+    "default_amount": 999,
+    "max_amount": 9999
+  }
+]

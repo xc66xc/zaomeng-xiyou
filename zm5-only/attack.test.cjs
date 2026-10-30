@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const fs=require('node:fs');
 const {EventEmitter}=require('node:events');
 const update=require('./attack.cjs');
-const protocol={zm5:'zm5-attack-1.2',zm4:'zm4-attack-1.0',zm3:'zm3-attack-1.0'};
+const protocol={zm5:'zm5-attack-1.2',zm4:'zm4-attack-1.0',zm3:'zm3-helper-2.0'};
 const urls={
   zm5:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf',
   zm4:'https://sda.4399.com/4399swf/upload_swf/ftp15/csya/20150127/1/v5880.swf',
@@ -13,8 +13,9 @@ const urls={
 };
 const config=(game,overrides={})=>({game,protocol:protocol[game],attack_multiplier:10,updated_at:Date.now(),...overrides});
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
+const catalog={boss:[{id:'xtzy',name:'刑天之翼',bigtype:'sz'}],items:[{id:'wpxt',kind:'item',max_amount:9999},{id:'pet_potential',kind:'pet',max_amount:9999}]};
 function configure(page,value) {
-  return vm.runInContext(`(${update.toString()})(${JSON.stringify(value)})`,page);
+  return vm.runInContext(`(${update.toString()})(${JSON.stringify(value)},${JSON.stringify(catalog)})`,page);
 }
 
 test('serialized chapter five callback preserves role/pet/fairy scaling, bounds and expiry',()=>{
@@ -87,6 +88,8 @@ function bridgeHarness() {
       if(failures.has(name))throw Object.assign(new Error('missing '+name),{code:'ENOENT'});
       if(deferred.has(name))return deferred.get(name);
       if(name.startsWith('patched-'))return Buffer.from(name);
+      if(name==='boss-items-zm3.json')return JSON.stringify(catalog.boss);
+      if(name==='zm3-items.json')return JSON.stringify(catalog.items);
       if(!configs.has(name))throw Object.assign(new Error('missing '+name),{code:'ENOENT'});
       return JSON.stringify(configs.get(name));
     },
@@ -104,7 +107,8 @@ function bridgeHarness() {
   });
   vm.runInContext(fs.readFileSync(__dirname+'/bridge.cjs','utf8'),sandbox);
   function window() {
-    const debuggerApi=new EventEmitter(),page=vm.createContext({window:{}}),wc=new EventEmitter();
+    const plugins=[];
+    const debuggerApi=new EventEmitter(),page=vm.createContext({window:{},document:{querySelectorAll:()=>plugins}}),wc=new EventEmitter();
     debuggerApi.attach=()=>{};
     debuggerApi.sendCommand=async(method,args)=>{
       sent.push([method,args]);
@@ -113,9 +117,9 @@ function bridgeHarness() {
     };
     wc.debugger=debuggerApi;wc.isDestroyed=()=>false;
     app.emit('browser-window-created',{}, {webContents:wc});
-    return {wc,page,debuggerApi,
+    return {wc,page,debuggerApi,plugins,
       context(id=7){debuggerApi.emit('message',{},'Runtime.executionContextCreated',
-        {context:{id,origin:'https://sda.4399.com',auxData:{isDefault:true}}});},
+        {context:{id,origin:'https://sda.4399.com',auxData:{isDefault:true,frameId:'game-frame'}}});},
       request(game,id=game,url=urls[game]){debuggerApi.emit('message',{},'Fetch.requestPaused',
         {requestId:id,frameId:'game-frame',request:{url}});}
     };
@@ -282,4 +286,131 @@ test('chapter three missing patch and foreign configuration leave original damag
   h.failures.delete('patched-zm3.swf');w.request('zm3','retry');await flush();await h.poll();
   assert.equal(h.status('zm3').patched_loaded,true);
   assert.equal(w.page.window.__zmxyAttackPower3(40,'Role1','hit1'),40);
+});
+
+test('chapter three drop and experience controls reject stale, invalid and foreign configurations',()=>{
+  const page=vm.createContext({window:{}});
+  function settings(overrides={}) {configure(page,config('zm3',{mode:'multiplier',multiplier:4,experience_multiplier:10,...overrides}));}
+  settings();assert.equal(page.window.__zmxyDropRate(0.15),0.6);
+  assert.equal(page.window.__zmxyExperience3(20),200);
+  settings({mode:'guaranteed'});assert.equal(page.window.__zmxyDropRate(0),1);
+  settings({multiplier:1000});assert.equal(page.window.__zmxyDropRate(0.15),1);
+  settings({mode:'original'});assert.equal(page.window.__zmxyDropRate(0.15),0.15);
+  for(const multiplier of [0,-1,1.2,1001,'10',null]) {
+    settings({multiplier,experience_multiplier:multiplier});
+    assert.equal(page.window.__zmxyDropRate(0.15),0.15);
+    assert.equal(page.window.__zmxyExperience3(20),20);
+  }
+  settings({experience_multiplier:1000});assert.equal(page.window.__zmxyExperience3(1e7),1e8);
+  assert.equal(page.window.__zmxyExperience3(1e9),1e9); // Do not reduce original large rewards.
+  settings({experience_multiplier:1});assert.equal(page.window.__zmxyExperience3(0.15),0.15);
+  for(const overrides of [{game:'zm4'},{protocol:'zm3-attack-1.0'},{updated_at:0},{updated_at:Date.now()+5000}]) {
+    settings({...overrides,mode:'guaranteed',experience_multiplier:1000});
+    assert.equal(page.window.__zmxyDropRate(0.15),0.15);
+    assert.equal(page.window.__zmxyExperience3(20),20);
+  }
+  settings();
+  for(const value of [-1,1.1,Infinity,NaN])assert(Object.is(page.window.__zmxyDropRate(value),value));
+});
+
+test('Boss choices are allowlisted and strength success does not enable unrelated fusion',()=>{
+  const page=vm.createContext({window:{}});
+  configure(page,config('zm3',{boss_drop_enabled:true,boss_drop_item:'xtzy',strength_guaranteed:true}));
+  assert.deepEqual(JSON.parse(JSON.stringify(page.window.__zmxyBossDrop3(true))),{name:'xtzy',bigtype:'sz'});
+  assert.equal(page.window.__zmxyBossDrop3(false),null);
+  assert.equal(page.window.__zmxyCraftRate(0.001,'strength'),1);
+  assert.equal(page.window.__zmxyCraftRate(0.75,'fusion'),0.75);
+  for(const overrides of [{boss_drop_item:'unknown'},{boss_drop_enabled:false},{boss_drop_enabled:1},
+    {protocol:'old'},{game:'zm5'},{updated_at:0}]) {
+    configure(page,config('zm3',{boss_drop_enabled:true,boss_drop_item:'xtzy',...overrides}));
+    assert.equal(page.window.__zmxyBossDrop3(true),null);
+  }
+  for(const overrides of [{strength_guaranteed:false},{strength_guaranteed:1},{updated_at:0},{game:'zm4'}]) {
+    configure(page,config('zm3',{strength_guaranteed:true,...overrides}));
+    assert.equal(page.window.__zmxyCraftRate(0.001,'strength'),0.001);
+  }
+});
+
+test('forge choices remain inside nested crafting scope across ticks and expire abandoned scopes',()=>{
+  const page=vm.createContext({window:{}});
+  const settings=overrides=>configure(page,config('zm3',{craft_max_attributes:true,craft_elements:'jin+shui',...overrides}));
+  settings();const forge=operation=>page.window.__zmxyForge3(operation);
+  assert.equal(forge('best'),null);assert.equal(forge('elements'),null);
+  forge('enter');settings();assert.equal(forge('best'),true);
+  assert.deepEqual(JSON.parse(JSON.stringify(forge('elements'))),{jin:true,mu:false,shui:true,huo:false,tu:false});
+  forge('enter');forge('leave');assert.equal(forge('best'),true);
+  for(const craft_elements of ['random','jin+jin','jin+mu+shui','wrong','']) {
+    settings({craft_elements});assert.equal(forge('elements'),null);
+  }
+  settings({craft_max_attributes:false});assert.equal(forge('best'),false);
+  forge('leave');assert.equal(forge('best'),null);
+  settings();forge('enter');page.window.__zmxyForgeState.entered_at=Date.now()-5000;
+  assert.equal(forge('best'),null);
+  forge('enter');configure(page,config('zm4'));settings();assert.equal(forge('best'),null);
+  forge('enter');settings({updated_at:0});assert.equal(forge('best'),null);
+});
+
+function command(overrides={}) {
+  return {id:'command-1',action:'add_item',item:'wpxt',amount:999,created_at:Date.now(),client_pid:process.pid,...overrides};
+}
+function flashPlugin(calls,response=['ok',0,999,999]) {
+  return {__zmxyCommand3(argument) {
+    if(argument==='__mac_helper|probe|probe||1')return ['ready',2,0,0];
+    calls.push(argument);
+    if(response instanceof Error)throw response;
+    return response;
+  }};
+}
+
+test('item clicks are bound to fresh client/chapter configuration and execute once across windows and frame reloads',async()=>{
+  const h=bridgeHarness(),w=h.window(),other=h.window(),calls=[];
+  w.plugins.push(flashPlugin(calls));other.plugins.push(flashPlugin(calls));
+  for(const window of [w,other]){window.context();window.request('zm3');}
+  await flush();await h.poll();assert.equal(h.status('zm3').command_ready,true);
+  const settings=h.configs.get('settings-zm3.json');settings.command=command();
+  await h.poll();await h.poll();assert.equal(calls.length,1);
+  assert.equal(calls[0],'__mac_helper|command-1|add_item|wpxt|999');
+  assert.deepEqual(h.status('zm3').command_result,{id:'command-1',state:'ok',before:0,total:999,added:999});
+  w.debuggerApi.emit('message',{},'Page.frameNavigated',{frame:{id:'game-frame'}});
+  w.request('zm3');await flush();await h.poll();assert.equal(calls.length,1);
+  for(const overrides of [{id:'wrong-pid',client_pid:process.pid+1},{id:'old',created_at:Date.now()-16000},
+    {id:'future',created_at:Date.now()+5000},{id:'invalid|id'}]) {
+    settings.command=command(overrides);await h.poll();assert.equal(calls.length,1);
+  }
+  settings.command=command({id:'bad-item',item:'not-allowlisted'});await h.poll();
+  assert.equal(h.status('zm3').command_result.state,'invalid');assert.equal(calls.length,1);
+  settings.command=command({id:'bad-amount',amount:10000});await h.poll();
+  assert.equal(h.status('zm3').command_result.state,'invalid');assert.equal(calls.length,1);
+  settings.command=command({id:'bad-kind',action:'pet_potential'});await h.poll();assert.equal(calls.length,1);
+  settings.command=command({id:'stale-settings'});settings.updated_at=0;await h.poll();assert.equal(calls.length,1);
+});
+
+test('uncertain item outcomes are terminal and never automatically retried after a context error',async()=>{
+  const h=bridgeHarness(),w=h.window(),calls=[];
+  w.plugins.push(flashPlugin(calls,new Error('Flash lost after mutation')));
+  w.context();w.request('zm3');await flush();await h.poll();
+  h.configs.get('settings-zm3.json').command=command();await h.poll();
+  assert.equal(h.status('zm3').command_result.state,'unknown');
+  assert.match(h.status('zm3').error,/不会自动重试/);
+  w.plugins.splice(0,1,flashPlugin(calls));
+  await h.poll();await h.poll();assert.equal(calls.length,1);
+  h.configs.get('settings-zm3.json').command=command({id:'user-new-click'});await h.poll();
+  assert.equal(calls.length,2);assert.equal(h.status('zm3').command_result.state,'ok');
+  assert.equal(h.status('zm3').error,'');
+});
+
+test('readonly readiness rejects old patches, duplicate Flash plugins and foreign frame contexts',async()=>{
+  const h=bridgeHarness(),w=h.window(),calls=[];
+  w.plugins.push({__zmxyCommand3:()=>['ready',1,0,0]});
+  w.context();w.request('zm3');await flush();
+  h.configs.get('settings-zm3.json').command=command();await h.poll();
+  assert.equal(h.status('zm3').command_ready,false);
+  w.plugins.splice(0,1,flashPlugin(calls),flashPlugin(calls));await h.poll();
+  assert.equal(h.status('zm3').command_ready,false);assert.equal(calls.length,0);
+  w.plugins.pop();
+  w.debuggerApi.emit('message',{},'Runtime.executionContextDestroyed',{executionContextId:7});
+  w.debuggerApi.emit('message',{},'Runtime.executionContextCreated',
+    {context:{id:9,origin:'https://sda.4399.com',auxData:{isDefault:true,frameId:'other-frame'}}});
+  await h.poll();assert.equal(h.status('zm3').command_ready,false);assert.equal(calls.length,0);
+  w.context();await h.poll();assert.equal(h.status('zm3').command_ready,true);assert.equal(calls.length,1);
 });
