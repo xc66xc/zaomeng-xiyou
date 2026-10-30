@@ -1,4 +1,4 @@
-"""Rebuild only four hero attack methods in the verified v261029 game wrapper."""
+"""Rebuild opt-in chapter-three helpers in the verified v261029 wrapper."""
 import hashlib
 import json
 import os
@@ -9,6 +9,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from make_delta import generate, unpack
+from build_patch3_features import patch_features
+from build_patch3_commands import patch_commands
 
 SOURCE_HASH = '9e525984ea894cd940d3c834495c3e2c4bd43a0c3846a90bcedb8a23e947a76c'
 INNER_SOURCE_HASH = '9cfb2ad24e63d0c74ca0ba56f1d638ced939fee2ac5ebb8ded166e80ac4e2ee4'
@@ -201,7 +203,11 @@ def main() -> None:
         raise ValueError('Unexpected embedded game')
     cli = [os.environ.get('JAVA', 'java'), '-Xmx2g', '-Djava.awt.headless=true',
            '-jar', os.environ['FFDEC_JAR']]
-    modified = patch_heroes(root, cli)
+    patch_heroes(root, cli)
+    xml = ET.parse(root / 'inner.xml').getroot()
+    source = patch_features(root, cli, root / 'patched-Role4.swf', xml)
+    source = patch_commands(root, cli, source, xml)
+    modified = unpack(source)
     result = replace_binary(original, modified)
     (root / 'release.swf').write_bytes(result)
     embedded = {'binaryID': 3, **generate(inner, modified)}
