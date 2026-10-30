@@ -41,22 +41,51 @@ private final class HelperButton: NSButton {
 }
 
 private enum GameChapter: Int, CaseIterable {
-    case four = 4, five = 5
+    case three = 3, four = 4, five = 5
     var game: String { "zm\(rawValue)" }
-    var protocolName: String { self == .four ? "zm4-attack-1.0" : "zm5-attack-1.2" }
-    var title: String { self == .four ? "洪荒大劫篇" : "上古天帝篇" }
-    var version: String { self == .four ? "V58.8" : "V47.8" }
-    var filename: String { self == .four ? "v5880" : "v4780" }
+    var protocolName: String { self == .five ? "zm5-attack-1.2" : "\(game)-attack-1.0" }
+    var title: String {
+        switch self { case .three: return "大闹天庭篇"; case .four: return "洪荒大劫篇"; case .five: return "上古天帝篇" }
+    }
+    var version: String {
+        switch self { case .three: return "v261029"; case .four: return "V58.8"; case .five: return "V47.8" }
+    }
+    var filename: String {
+        switch self { case .three: return "v261029"; case .four: return "v5880"; case .five: return "v4780" }
+    }
     var recipe: String { "patch-\(filename)" }
     var patchFile: String { "patched-\(game).swf" }
-    var settingsFile: String { self == .four ? "settings-zm4.json" : "settings.json" }
-    var statusFile: String { self == .four ? "status-zm4.json" : "status.json" }
+    var settingsFile: String { self == .five ? "settings.json" : "settings-\(game).json" }
+    var statusFile: String { self == .five ? "status.json" : "status-\(game).json" }
     var baseURL: String {
-        "https://sda.4399.com/4399swf/upload_swf/" +
-            (self == .four ? "ftp15/csya/20150127/1/" : "ftp22/csya/20170622/1/")
+        let path: String
+        switch self {
+        case .three: path = "ftp7/hanbao/20120107/6/"
+        case .four: path = "ftp15/csya/20150127/1/"
+        case .five: path = "ftp22/csya/20170622/1/"
+        }
+        return "https://sda.4399.com/4399swf/upload_swf/" + path
     }
     var gameURL: String { baseURL + filename + ".swf" }
-    var referer: String { baseURL + filename + (self == .four ? "gg.htm" : "d.htm") }
+    var referer: String {
+        let suffix: String
+        switch self { case .three: suffix = ".htm"; case .four: suffix = "gg.htm"; case .five: suffix = "d.htm" }
+        return baseURL + filename + suffix
+    }
+    var scopeLabel: String {
+        switch self {
+        case .three: return "四角色 · 仅本地副本"
+        case .four: return "本人角色 · 仅单人副本"
+        case .five: return "角色、宠物、幻兽 · 仅单人副本"
+        }
+    }
+    var scopeNote: String {
+        switch self {
+        case .three: return "仅修改本地角色伤害，回血、辅助和联网竞技模式不变。"
+        case .four: return "本人角色的普通与技能伤害生效。"
+        case .five: return "普通与技能伤害生效，独立真实伤害不变。"
+        }
+    }
 }
 
 final class AttackApp: NSObject, NSApplicationDelegate {
@@ -72,7 +101,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     private var window: NSWindow!
     private var field = NSTextField(string: "1")
     private var status = NSTextField(wrappingLabelWithString: "先接入游戏，再应用倍率。")
-    private var multipliers: [GameChapter: Int64] = [.four: 1, .five: 1]
+    private var multipliers: [GameChapter: Int64] = [.three: 1, .four: 1, .five: 1]
     private var multiplier: Int64 {
         get { multipliers[chapter] ?? 1 }
         set { multipliers[chapter] = newValue }
@@ -231,9 +260,9 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         status.heightAnchor.constraint(equalToConstant: 40).isActive = true
         let stack = NSStackView(views: [heading, line(),
             label("攻击倍率", size: 30, weight: .semibold),
-            label(chapter == .four ? "本人角色 · 仅单人副本" : "角色、宠物、幻兽 · 仅单人副本", size: 16, secondary: true),
+            label(chapter.scopeLabel, size: 16, secondary: true),
             inputRow, feedback,
-            label(chapter == .four ? "本人角色的普通与技能伤害生效。" : "普通与技能伤害生效，独立真实伤害不变。", secondary: true),
+            label(chapter.scopeNote, secondary: true),
             status, line(), label("游戏接入", size: 20, weight: .semibold),
             label("首次使用：从官方准备客户端和游戏文件，再接入游戏。", secondary: true),
             row([button("官方客户端", #selector(downloadClient)),
