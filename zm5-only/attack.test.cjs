@@ -5,10 +5,11 @@ const vm=require('node:vm');
 const fs=require('node:fs');
 const {EventEmitter}=require('node:events');
 const update=require('./attack.cjs');
-const protocol={zm5:'zm5-attack-1.2',zm4:'zm4-attack-1.0'};
+const protocol={zm5:'zm5-attack-1.2',zm4:'zm4-attack-1.0',zm3:'zm3-attack-1.0'};
 const urls={
   zm5:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf',
-  zm4:'https://sda.4399.com/4399swf/upload_swf/ftp15/csya/20150127/1/v5880.swf'
+  zm4:'https://sda.4399.com/4399swf/upload_swf/ftp15/csya/20150127/1/v5880.swf',
+  zm3:'https://sda.4399.com/4399swf/upload_swf/ftp7/hanbao/20120107/6/v261029.swf'
 };
 const config=(game,overrides={})=>({game,protocol:protocol[game],attack_multiplier:10,updated_at:Date.now(),...overrides});
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
@@ -77,7 +78,7 @@ test('chapter changes expire the other callback and discard previous chapter tel
 
 function bridgeHarness() {
   const app=new EventEmitter(), shortcuts=new Map(), memory=new Map(), sent=[];
-  const configs=new Map([['settings.json',config('zm5')],['settings-zm4.json',config('zm4',{attack_multiplier:3})]]);
+  const configs=new Map([['settings.json',config('zm5')],['settings-zm4.json',config('zm4',{attack_multiplier:3})],['settings-zm3.json',config('zm3',{attack_multiplier:5})]]);
   const failures=new Set(),deferred=new Map();
   let poll,cleared=false;
   const fakeFs={
@@ -120,7 +121,7 @@ function bridgeHarness() {
     };
   }
   return {app,shortcuts,memory,sent,configs,failures,deferred,window,poll:()=>poll(),
-    status:game=>JSON.parse(memory.get(game==='zm5'?'/test/status.json':'/test/status-zm4.json')),
+    status:game=>JSON.parse(memory.get(game==='zm5'?'/test/status.json':`/test/status-${game}.json`)),
     get cleared(){return cleared;}};
 }
 
@@ -132,17 +133,18 @@ test('bridge patches exact chapter URLs and keeps independent settings, telemetr
   h.app.emit('ready');await flush();
   assert(!h.shortcuts.has('CommandOrControl+C')&&!h.shortcuts.has('CommandOrControl+V'));
   assert(h.shortcuts.has('F5'));
-  const five=h.window(),four=h.window();await flush();
+  const five=h.window(),four=h.window(),three=h.window();await flush();
   const patterns=h.sent.find(([method])=>method==='Fetch.enable')[1].patterns;
-  assert.equal(patterns.length,2);
+  assert.equal(patterns.length,3);
   assert.deepEqual(Array.from(patterns,entry=>entry.urlPattern).sort(),Object.values(urls).map(url=>url+'*').sort());
-  five.context();four.context();five.request('zm5');four.request('zm4');await flush();
-  for(const game of ['zm5','zm4'])assert(h.sent.some(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId===game));
+  five.context();four.context();three.context();five.request('zm5');four.request('zm4');three.request('zm3');await flush();
+  for(const game of ['zm5','zm4','zm3'])assert(h.sent.some(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId===game));
   await h.poll();
   assert.equal(five.page.window.__zmxyAttackPower5(100,'role','monster'),1000);
   assert.equal(four.page.window.__zmxyAttackPower4(100,'role','monster',false,false,false,false),300);
+  assert.equal(three.page.window.__zmxyAttackPower3(100,'Role1','hit1'),500);
   await h.poll();
-  for(const game of ['zm5','zm4']) {
+  for(const game of ['zm5','zm4','zm3']) {
     assert.equal(h.status(game).protocol,protocol[game]);
     assert.equal(h.status(game).active_game,game);
     assert.equal(h.status(game).patched_loaded,true);
@@ -150,6 +152,7 @@ test('bridge patches exact chapter URLs and keeps independent settings, telemetr
   }
   assert.equal(h.status('zm5').effective_attack,1000);
   assert.equal(h.status('zm4').effective_attack,300);
+  assert.equal(h.status('zm3').effective_attack,500);
   four.request('zm4','other','https://example.org/zm4.swf');
   four.request('zm4','suffix',urls.zm4+'-other.swf');await flush();
   for(const id of ['other','suffix'])assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId===id));
@@ -220,4 +223,63 @@ test('login subframe context clears do not invalidate the loaded Flash frame',as
   assert.equal(h.status('zm4').patched_loaded,true);
   assert.equal(w.page.window.__zmxyAttackPower4(25,'role','monster',false,false,false,false),100);
   await h.poll();assert.equal(h.status('zm4').effective_attack,100);
+});
+
+
+test('chapter three scales four heroes while preserving healing and invalid actions',()=>{
+  const page=vm.createContext({window:{}});
+  function power(overrides={},base=123,role='Role1',action='hit1') {
+    configure(page,config('zm3',overrides));
+    return page.window.__zmxyAttackPower3(base,role,action);
+  }
+  for(const role of ['Role1','Role2','Role3','Role4'])assert.equal(power({},123,role),1230);
+  for(const action of ['hit6','hit7','hit8'])assert.equal(power({},123,'Role2',action),123);
+  assert.equal(power({},123,'Role1','hit6'),1230);
+  for(const action of ['stand','hurt','hit',null,15,{}])assert.equal(power({},123,'Role1',action),123);
+  assert.equal(page.window.__zmxyAttackPower3(123,'Role1',undefined),123);
+  for(const role of ['Role5','Role1Shadow','monster','pet',null])assert.equal(power({},123,role),123);
+  for(const base of [0,-1,Infinity,-Infinity,NaN])assert(Object.is(power({},base),base));
+  assert.equal(power({attack_multiplier:1}),123);
+  assert.equal(power({attack_multiplier:2147483647}),2147483647);
+  for(const value of [0,-1,1.5,2147483648,'10',null])assert.equal(power({attack_multiplier:value}),123);
+  for(const value of [{game:'zm4'},{game:'zm5'},{protocol:protocol.zm4},{protocol:protocol.zm5},
+    {updated_at:0},{updated_at:Date.now()-5000},{updated_at:Date.now()+5000},{updated_at:null}]) {
+    assert.equal(power(value),123);
+  }
+});
+
+test('switching all three chapters isolates callbacks and retained damage receipts',async()=>{
+  const h=bridgeHarness(),w=h.window();
+  w.context();w.request('zm3');await flush();await h.poll();
+  assert.equal(w.page.window.__zmxyAttackPower3(40,'Role4','hit1'),200);
+  assert.equal(w.page.window.__zmxyAttackPower4(40,'role','monster',false,false,false,false),40);
+  assert.equal(w.page.window.__zmxyAttackPower5(40,'role','monster'),40);
+  await h.poll();assert.equal(h.status('zm3').effective_attack,200);
+  w.request('zm4');await flush();await h.poll();
+  assert.equal(h.status('zm3').patched_loaded,false);
+  assert.equal(h.status('zm3').effective_attack,undefined);
+  assert.equal(w.page.window.__zmxyAttackPower3(40,'Role4','hit1'),40);
+  assert.equal(w.page.window.__zmxyAttackPower4(40,'role','monster',false,false,false,false),120);
+  w.request('zm5');await flush();await h.poll();
+  assert.equal(h.status('zm4').patched_loaded,false);
+  assert.equal(h.status('zm4').effective_attack,undefined);
+  assert.equal(w.page.window.__zmxyAttackPower3(40,'Role4','hit1'),40);
+  assert.equal(w.page.window.__zmxyAttackPower5(40,'role','monster'),400);
+  w.request('zm3');await flush();await h.poll();
+  assert.equal(h.status('zm5').patched_loaded,false);
+  assert.equal(h.status('zm3').attack_checks,0);
+  assert.equal(h.status('zm3').effective_attack,undefined);
+});
+
+test('chapter three missing patch and foreign configuration leave original damage unchanged',async()=>{
+  const h=bridgeHarness(),w=h.window();
+  h.configs.set('settings-zm3.json',config('zm4',{attack_multiplier:500}));
+  h.failures.add('patched-zm3.swf');w.context();w.request('zm3');await flush();await h.poll();
+  assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId==='zm3'));
+  assert.equal(h.status('zm3').patched_loaded,false);
+  assert.match(h.status('zm3').error,/missing patched-zm3/);
+  for(const game of ['zm4','zm5'])assert.equal(h.status(game).error,'');
+  h.failures.delete('patched-zm3.swf');w.request('zm3','retry');await flush();await h.poll();
+  assert.equal(h.status('zm3').patched_loaded,true);
+  assert.equal(w.page.window.__zmxyAttackPower3(40,'Role1','hit1'),40);
 });

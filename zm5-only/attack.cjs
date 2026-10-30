@@ -28,5 +28,11 @@ module.exports = function updateAttack(config) {
     const multiplier = multiplierFor('zm4', 'zm4-attack-1.0', base);
     return multiplier === null ? base : result(base, multiplier);
   };
+  window.__zmxyAttackPower3 = function (base, role, action) {
+    if (!['Role1','Role2','Role3','Role4'].includes(role) || typeof action !== 'string' ||
+        !/^hit[0-9]/.test(action) || (role === 'Role2' && ['hit6','hit7','hit8'].includes(action))) return base;
+    const multiplier = multiplierFor('zm3', 'zm3-attack-1.0', base);
+    return multiplier === null ? base : result(base, multiplier);
+  };
   return window.__zmxyAttackTelemetry || {};
 };

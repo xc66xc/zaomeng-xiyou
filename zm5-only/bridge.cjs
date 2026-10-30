@@ -9,7 +9,9 @@ const games={
   zm5:{protocol:'zm5-attack-1.2',settings:'settings.json',statusFile:'status.json',patch:'patched-zm5.swf',
     url:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf'},
   zm4:{protocol:'zm4-attack-1.0',settings:'settings-zm4.json',statusFile:'status-zm4.json',patch:'patched-zm4.swf',
-    url:'https://sda.4399.com/4399swf/upload_swf/ftp15/csya/20150127/1/v5880.swf'}
+    url:'https://sda.4399.com/4399swf/upload_swf/ftp15/csya/20150127/1/v5880.swf'},
+  zm3:{protocol:'zm3-attack-1.0',settings:'settings-zm3.json',statusFile:'status-zm3.json',patch:'patched-zm3.swf',
+    url:'https://sda.4399.com/4399swf/upload_swf/ftp7/hanbao/20120107/6/v261029.swf'}
 };
 const controllers=new Set();
 for(const [game,entry] of Object.entries(games)) {

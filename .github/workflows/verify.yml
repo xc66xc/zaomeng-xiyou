@@ -32,7 +32,7 @@ jobs:
         run: |
           ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh "$RUNNER_TEMP/造梦西游攻击助手.app"
           test -z "$(find "$RUNNER_TEMP/造梦西游攻击助手.app" -iname '*.swf' -print)"
-      - run: python3 -m py_compile tools/build_patch.py tools/build_patch4.py tools/make_delta.py
+      - run: python3 -m py_compile tools/build_patch.py tools/build_patch4.py tools/build_patch3.py tools/make_delta.py
   release:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     needs: verify
@@ -68,7 +68,7 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
           ## 下载与首次使用
-          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；支持造梦4 V58.8本人角色与造梦5 V47.8攻击倍率。
+          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；支持造梦3 v261029、造梦4 V58.8与造梦5 V47.8攻击倍率。
           - 仅 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证。首次打开可能需要系统安全确认；Intel客户端在Apple Silicon上可能需要Rosetta。
           - 不含客户端、Flash或完整游戏SWF。用户须自行从官方来源下载安装依赖，不能把手游当成兼容客户端。
           - 官方客户端入口：https://webres.61.com/common/flash/common_micro.html?game=mole
