@@ -51,3 +51,6 @@
 !/zm5-only/zm2-items.json
 
 !/zm5-only/patch-v25928.json
+
+!/tools/build_patch1.py
+!/zm5-only/patch-zm1-v25928.json

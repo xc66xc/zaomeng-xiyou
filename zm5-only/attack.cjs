@@ -50,6 +50,12 @@ module.exports = function updateAttack(config, catalogs = {}) {
     const multiplier = multiplierFor('zm3', 'zm3-helper-2.0', base);
     return multiplier === null ? base : result(base, multiplier);
   };
+  window.__zmxyAttackPower1 = function (base, role, action) {
+    if (!['Role1','Role2','Role2Shadow'].includes(role) || typeof action !== 'string' ||
+        !/^hit[0-9]/.test(action) || (['Role2','Role2Shadow'].includes(role) && action === 'hit5')) return base;
+    const multiplier = multiplierFor('zm1', 'zm1-helper-1.0', base);
+    return multiplier === null ? base : result(base, multiplier);
+  };
   window.__zmxyAttackPower2 = function (base, role, action) {
     if (!['Role1','Role2','Role3','Role2Shadow'].includes(role) || typeof action !== 'string' ||
         !/^hit[0-9]/.test(action) || (['Role2','Role2Shadow'].includes(role) && action === 'hit5')) return base;
@@ -57,7 +63,7 @@ module.exports = function updateAttack(config, catalogs = {}) {
     return multiplier === null ? base : result(base, multiplier);
   };
   window.__zmxyDropRate = function (base) {
-    if (!(helperLive('zm2') || helperLive()) || !Number.isFinite(base) || base < 0 || base > 1) return base;
+    if (!(live('zm1', 'zm1-helper-1.0') || helperLive('zm2') || helperLive()) || !Number.isFinite(base) || base < 0 || base > 1) return base;
     const c = window.__zmxyDropConfig;
     let rate = base;
     if (c.mode === 'guaranteed') rate = 1;
