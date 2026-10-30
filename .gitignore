@@ -30,7 +30,7 @@
 
 !/assets/
 /assets/*
-!/assets/preview.png
+!/assets/preview-zm1.jpg
 !/assets/alipay.png
 !/assets/wechat-pay.png
 
@@ -54,3 +54,8 @@
 
 !/tools/build_patch1.py
 !/zm5-only/patch-zm1-v25928.json
+
+!/assets/preview-zm2.jpg
+!/assets/preview-zm3.jpg
+!/assets/preview-zm4.jpg
+!/assets/preview-zm5.jpg
