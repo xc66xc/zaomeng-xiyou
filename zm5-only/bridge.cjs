@@ -3,9 +3,12 @@ const {app,globalShortcut,Menu}=require('electron');
 if (typeof app.setName === 'function') app.setName('造梦西游');
 const fs=require('fs').promises;
 const path=require('path');
+const {URL}=require('url');
 const updateAttack=require('./attack.cjs');
 const home=__dirname;
 const games={
+  zm2:{protocol:'zm2-helper-1.0',settings:'settings-zm2.json',statusFile:'status-zm2.json',patch:'patched-zm2.swf',
+    url:'https://sbai.4399.com/4399swf/upload_swf/ftp6/hanbao/20110927/4/v25928.swf'},
   zm5:{protocol:'zm5-attack-1.2',settings:'settings.json',statusFile:'status.json',patch:'patched-zm5.swf',
     url:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf'},
   zm4:{protocol:'zm4-attack-1.0',settings:'settings-zm4.json',statusFile:'status-zm4.json',patch:'patched-zm4.swf',
@@ -13,27 +16,31 @@ const games={
   zm3:{protocol:'zm3-helper-2.0',settings:'settings-zm3.json',statusFile:'status-zm3.json',patch:'patched-zm3.swf',
     url:'https://sda.4399.com/4399swf/upload_swf/ftp7/hanbao/20120107/6/v261029.swf'}
 };
+const allowedOrigins=new Set(Object.values(games).map(entry=>new URL(entry.url).origin));
 const controllers=new Set();
 for(const [game,entry] of Object.entries(games)) {
   entry.config={game,protocol:entry.protocol,attack_multiplier:1,updated_at:0};
   entry.status={patched_loaded:false,attack_checks:0,error:''};
 }
 let busy=false,stopped=false;
-let catalogs;
+const catalogsByGame=new Map();
 const handledCommands=new Set();
 const unknownCommandError='物品操作结果未知，请先检查游戏背包；不会自动重试。';
 
-async function loadCatalogs() {
-  if(catalogs)return catalogs;
-  const [boss,items]=await Promise.all(['boss-items-zm3.json','zm3-items.json'].map(async name=>
+async function loadCatalogs(game) {
+  if(catalogsByGame.has(game))return catalogsByGame.get(game);
+  const [boss,items]=await Promise.all([`boss-items-${game}.json`,`${game}-items.json`].map(async name=>
     JSON.parse(await fs.readFile(path.join(home,name),'utf8'))));
+  const kinds=game==='zm2'?['item','repair']:['item','equipment','pet'];
+  const maximum=game==='zm2'?999:9999;
   if(!Array.isArray(boss)||!Array.isArray(items)||
       boss.some(item=>!item||typeof item.id!=='string'||typeof item.bigtype!=='string')||
-      items.some(item=>!item||typeof item.id!=='string'||!['item','equipment','pet'].includes(item.kind)||
-        !Number.isInteger(item.max_amount)||item.max_amount<1||item.max_amount>9999)) {
-    throw new Error('造梦3物品目录校验失败，请重新接入。');
+      items.some(item=>!item||typeof item.id!=='string'||!kinds.includes(item.kind)||
+        !/^[A-Za-z0-9_]+$/.test(item.id)||!Number.isInteger(item.max_amount)||
+        item.max_amount<1||item.max_amount>maximum||(item.kind==='repair'&&item.max_amount!==1))) {
+    throw new Error(`造梦${game.slice(2)}物品目录校验失败，请重新接入。`);
   }
-  catalogs={boss,items};return catalogs;
+  const catalogs={boss,items};catalogsByGame.set(game,catalogs);return catalogs;
 }
 
 function commandIdentity(command) {
@@ -45,29 +52,39 @@ function commandIdentity(command) {
 // Claim in this process before crossing the Flash boundary. Uncertain results
 // are terminal; no automatic retry, including after frame/context replacement.
 async function handleCommand(controller,contextId,generation) {
-  const entry=games.zm3,command=entry.config.command;
-  if(!commandIdentity(command)||handledCommands.has(command.id)||!entry.status.command_ready)return;
-  if(controller.game!=='zm3'||controller.generation!==generation)return;
+  const game=controller.game;
+  if(!['zm2','zm3'].includes(game))return;
+  const entry=games[game],command=entry.config.command;
+  if(!commandIdentity(command)||handledCommands.has(`${game}:${command.id}`)||!entry.status.command_ready)return;
+  if(controller.generation!==generation)return;
   const age=Date.now()-entry.config.updated_at;
   if(!Number.isFinite(age)||age<0||age>3500)return;
   if(handledCommands.size>=1024) {
     entry.status.command_result={id:command.id,state:'limit'};return;
   }
-  handledCommands.add(command.id);
+  handledCommands.add(`${game}:${command.id}`);
+  const catalogs=catalogsByGame.get(game);
   const item=catalogs.items.find(item=>item.id===command.item);
+  const validAction=game==='zm2'?
+    ['add_item','repair_wings'].includes(command.action)&&[1,2].includes(command.player)&&
+      ((command.action==='repair_wings')===(item&&item.kind==='repair')):
+    ['add_item','pet_potential'].includes(command.action)&&
+      ((command.action==='pet_potential')===(item&&item.kind==='pet'));
   if(!item||!Number.isInteger(command.amount)||command.amount<1||command.amount>item.max_amount||
-      (command.action!=='add_item'&&command.action!=='pet_potential')||
-      (command.action==='pet_potential')!==(item.kind==='pet')) {
+      !validAction) {
     entry.status.command_result={id:command.id,state:'invalid'};return;
   }
   entry.status.command_result={id:command.id,state:'processing'};
-  const argument=['__mac_helper',command.id,command.action,command.item,command.amount].join('|');
+  const argumentsList=['__mac_helper',command.id,command.action,command.item,command.amount];
+  if(game==='zm2')argumentsList.push(command.player);
+  const argument=argumentsList.join('|');
+  const method=game==='zm2'?'__zmxyCommand2':'__zmxyCommand3';
   try {
     const result=await controller.wc.debugger.sendCommand('Runtime.evaluate',{
       expression:`(() => {const c=window.__zmxyDropConfig||{},age=Date.now()-c.updated_at;
-        if(c.game!=='zm3'||c.protocol!=='zm3-helper-2.0'||!Number.isFinite(age)||age<0||age>3500)return ['not_ready',0,0,0];
-        const p=Array.from(document.querySelectorAll('embed,object')).filter(p=>typeof p.__zmxyCommand3==='function');
-        return p.length===1?p[0].__zmxyCommand3(${JSON.stringify(argument)}):['not_ready',0,0,0];})()`,
+        if(c.game!==${JSON.stringify(game)}||c.protocol!==${JSON.stringify(entry.protocol)}||!Number.isFinite(age)||age<0||age>3500)return ['not_ready',0,0,0];
+        const p=Array.from(document.querySelectorAll('embed,object')).filter(p=>typeof p[${JSON.stringify(method)}]==='function');
+        return p.length===1?p[0][${JSON.stringify(method)}](${JSON.stringify(argument)}):['not_ready',0,0,0];})()`,
       contextId,returnByValue:true
     });
     const receipt=result&&result.result&&result.result.value;
@@ -129,7 +146,9 @@ function attach(window) {
     try {
       if(method==='Runtime.executionContextCreated') {
         const c=params.context;
-        if(c.origin==='https://sda.4399.com'&&c.auxData&&c.auxData.isDefault) controller.contexts.set(c.id,c.auxData.frameId);
+        if(allowedOrigins.has(c.origin)&&c.auxData&&c.auxData.isDefault) {
+          controller.contexts.set(c.id,{frameId:c.auxData.frameId,origin:c.origin});
+        }
       } else if(method==='Runtime.executionContextDestroyed') {
         controller.contexts.delete(params.executionContextId);
       } else if(method==='Runtime.executionContextsCleared') {
@@ -189,10 +208,20 @@ const timer=setInterval(async()=>{
       if(!c.game||c.wc.isDestroyed()) continue;
       const entry=games[c.game];
       const generation=c.generation;
-      const chapterCatalogs=c.game==='zm3'?await loadCatalogs():{};
+      let chapterCatalogs={};
       entry.status.command_ready=false;
-      for(const [contextId,frameId] of c.contexts) {
-        if(frameId!==c.frameId||generation!==c.generation)continue;
+      if(['zm2','zm3'].includes(c.game)) {
+        const catalogError=`造梦${c.game.slice(2)}物品目录加载失败，请重新接入。`;
+        try {
+          chapterCatalogs=await loadCatalogs(c.game);
+          if(entry.status.error===catalogError)entry.status.error='';
+        } catch(error) {
+          entry.status.error=catalogError;
+          continue;
+        }
+      }
+      for(const [contextId,context] of c.contexts) {
+        if(context.frameId!==c.frameId||context.origin!==new URL(entry.url).origin||generation!==c.generation)continue;
         const result=await c.wc.debugger.sendCommand('Runtime.evaluate',{
           expression:`(${updateAttack.toString()})(${JSON.stringify(entry.config)},${JSON.stringify(chapterCatalogs)})`,contextId,returnByValue:true
         }).catch(error=>{
@@ -201,7 +230,7 @@ const timer=setInterval(async()=>{
         });
         if(generation!==c.generation)break;
         if(result&&result.result&&result.result.value) entry.status={...entry.status,...result.result.value};
-        if(c.game==='zm3')await handleCommand(c,contextId,generation);
+        if(['zm2','zm3'].includes(c.game))await handleCommand(c,contextId,generation);
       }
     }
     for(const [game,entry] of Object.entries(games)) {

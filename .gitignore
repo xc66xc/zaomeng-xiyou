@@ -44,3 +44,10 @@
 !/tools/build_patch3_commands.py
 !/zm5-only/zm3-items.json
 !/zm5-only/boss-items-zm3.json
+
+!/tools/build_patch2.py
+!/tools/build_patch2_commands.py
+!/zm5-only/boss-items-zm2.json
+!/zm5-only/zm2-items.json
+
+!/zm5-only/patch-v25928.json

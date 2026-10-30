@@ -1,0 +1,42 @@
+[
+  {
+    "id": "wpqhs1",
+    "name": "1级强化石",
+    "category": "强化石",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 999
+  },
+  {
+    "id": "wpqhs2",
+    "name": "2级强化石",
+    "category": "强化石",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 999
+  },
+  {
+    "id": "wpqhs3",
+    "name": "3级强化石",
+    "category": "强化石",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 999
+  },
+  {
+    "id": "wpqhs4",
+    "name": "4级强化石",
+    "category": "强化石",
+    "kind": "item",
+    "default_amount": 99,
+    "max_amount": 999
+  },
+  {
+    "id": "xtzy",
+    "name": "刑天之翼背包修复（不新增翅膀）",
+    "category": "翅膀修复",
+    "kind": "repair",
+    "default_amount": 1,
+    "max_amount": 1
+  }
+]

@@ -1,0 +1,514 @@
+[
+  {
+    "id": "lzp",
+    "name": "老者袍",
+    "kind": "zbfj",
+    "role": "唐僧",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "dsyj",
+    "name": "地煞猿甲",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "dsqz",
+    "name": "地煞权杖",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "dslj",
+    "name": "地煞灵戒",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "lcgy",
+    "name": "罗刹鬼衣",
+    "kind": "zbfj",
+    "role": "八戒",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "tsyj",
+    "name": "天煞月戟",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "tsyp",
+    "name": "天煞羽袍",
+    "kind": "zbfj",
+    "role": "唐僧",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "tsgl",
+    "name": "天煞骨链",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "lcld",
+    "name": "罗刹镰刀",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "fygwj",
+    "name": "封印鬼王剑",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xhyk",
+    "name": "血海妖壳",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xhmj",
+    "name": "血海魔甲",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "lczh",
+    "name": "罗刹指环",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xhxh",
+    "name": "血海邪皇",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "bsxj",
+    "name": "白霜胸甲",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "bszj",
+    "name": "白霜重甲",
+    "kind": "zbfj",
+    "role": "八戒",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "bsyz",
+    "name": "白霜妖杖",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "csgs",
+    "name": "苍生挂饰",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "jgj",
+    "name": "金刚甲",
+    "kind": "zbfj",
+    "role": "八戒",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "zljs",
+    "name": "锦阑袈裟",
+    "kind": "zbfj",
+    "role": "唐僧",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "jhcz",
+    "name": "轮回杖",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ryjgb",
+    "name": "擎天柱",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "jcdp",
+    "name": "九齿钉耙",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "tpzy",
+    "name": "天蓬战衣",
+    "kind": "zbfj",
+    "role": "八戒",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "dszk",
+    "name": "大圣战铠",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "传说",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xtzy",
+    "name": "刑天之翼",
+    "kind": "zbcb",
+    "role": "通用",
+    "quality": "传说",
+    "bigtype": "sz"
+  },
+  {
+    "id": "dzj",
+    "name": "地藏戒",
+    "kind": "zbsp",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "szyj",
+    "name": "蛇之印记",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xzyj",
+    "name": "蝎之印记",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "zzyj",
+    "name": "蛛之印记",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "mzyj",
+    "name": "蟾之印记",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "gzyj",
+    "name": "蚣之印记",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "ptxzf",
+    "name": "普通的行者袍",
+    "kind": "zbfj",
+    "role": "悟空",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ptxzg",
+    "name": "普通的行者棍",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ptjs",
+    "name": "普通的袈裟",
+    "kind": "zbfj",
+    "role": "唐僧",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ptsmz",
+    "name": "普通的松木杖",
+    "kind": "zbwq",
+    "role": "唐僧",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ptmlf",
+    "name": "普通的墨兰服",
+    "kind": "zbfj",
+    "role": "八戒",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ptsf",
+    "name": "普通的石斧",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "普通",
+    "bigtype": "zb"
+  },
+  {
+    "id": "gtb",
+    "name": "古藤棒",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "gtq",
+    "name": "古藤枪",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "优秀",
+    "bigtype": "zb"
+  },
+  {
+    "id": "qssp",
+    "name": "前生碎片",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "yzfw",
+    "name": "阳之符文",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "lshb",
+    "name": "绿色花瓣",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "lssp",
+    "name": "来生碎片",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "hshb",
+    "name": "红色花瓣",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "yinzfw",
+    "name": "阴之符文",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "zshb",
+    "name": "紫色花瓣",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "jssp",
+    "name": "今生碎片",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "yll",
+    "name": "阎罗令",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "t",
+    "name": "贪",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "c",
+    "name": "嗔",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "ch",
+    "name": "痴",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "jxbuff",
+    "name": "顽固的水牛",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "xique",
+    "name": "幸运的喜鹊",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "bsz",
+    "name": "避水珠",
+    "kind": "zbwp",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  },
+  {
+    "id": "dshl",
+    "name": "地煞葫芦",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "精良",
+    "bigtype": "zb"
+  },
+  {
+    "id": "tsgj",
+    "name": "天煞古剑",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "bsj",
+    "name": "白霜镜",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "lsys",
+    "name": "罗刹妖伞",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "xhmt",
+    "name": "血海魔童",
+    "kind": "zbfb",
+    "role": "通用",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "ssc",
+    "name": "三生锤",
+    "kind": "zbwq",
+    "role": "八戒",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "gwj",
+    "name": "鬼王剑",
+    "kind": "zbwq",
+    "role": "悟空",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "qcp",
+    "name": "七彩袍",
+    "kind": "zbfj",
+    "role": "唐僧",
+    "quality": "史诗",
+    "bigtype": "zb"
+  },
+  {
+    "id": "wpqhs2",
+    "name": "2级强化石",
+    "kind": "wpqhs2",
+    "role": "通用",
+    "quality": "普通",
+    "bigtype": "dj"
+  }
+]
