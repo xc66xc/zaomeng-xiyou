@@ -3,6 +3,7 @@ const {app,globalShortcut,Menu}=require('electron');
 if (typeof app.setName === 'function') app.setName('造梦西游');
 const fs=require('fs').promises;
 const path=require('path');
+const {readBounded,loadManifest,verifyPatch}=require('./auto-manifest.cjs');
 const {URL}=require('url');
 const updateAttack=require('./attack.cjs');
 const home=__dirname;
@@ -24,6 +25,18 @@ for(const [game,entry] of Object.entries(games)) {
   entry.config={game,protocol:entry.protocol,attack_multiplier:1,updated_at:0};
   entry.status={patched_loaded:false,attack_checks:0,error:''};
 }
+// This manifest is installed only after local structural validation completes.
+// Read one bounded snapshot per client boot; never pair a new URL with an old patch.
+const autoReady=(async()=>{
+  const entry=games.zm5;
+  const manifest=await loadManifest(fs,home);
+  entry.url=manifest.game_url;
+  entry.resultHash=manifest.result_hash;
+})().catch(error=>{
+  games.zm5.disabled=true;
+  games.zm5.status.error='造梦5自动适配记录校验失败，请保存并退出游戏后重新接入：'+String(error.message||error);
+});
+
 let busy=false,stopped=false;
 const catalogsByGame=new Map();
 const handledCommands=new Set();
@@ -160,7 +173,12 @@ function attach(window) {
                 (method==='Page.frameDetached'&&params.frameId===controller.frameId)) {
         controller.game=null;controller.generation++;
       } else if(method==='Fetch.requestPaused') {
-        requestGame=Object.keys(games).find(game=>params.request.url.split('?')[0]===games[game].url);
+        const bootGeneration=controller.generation;
+        await autoReady;
+        if(bootGeneration!==controller.generation||wc.isDestroyed()) {
+          await wc.debugger.sendCommand('Fetch.continueRequest',{requestId:params.requestId});return;
+        }
+        requestGame=Object.keys(games).find(game=>!games[game].disabled&&params.request.url.split('?')[0]===games[game].url);
         if(!requestGame) {
           await wc.debugger.sendCommand('Fetch.continueRequest',{requestId:params.requestId});return;
         }
@@ -169,7 +187,11 @@ function attach(window) {
         controller.frameId=params.frameId;
         const generation=++controller.generation;
         const entry=games[requestGame];
-        if(!entry.patchData) entry.patchData=await fs.readFile(path.join(home,entry.patch));
+        if(!entry.patchData) {
+          const patch=await readBounded(fs,home,entry.patch,32_000_000);
+          if(entry.resultHash)verifyPatch(patch,entry.resultHash);
+          entry.patchData=patch;
+        }
         await wc.debugger.sendCommand('Fetch.fulfillRequest',{
           requestId:params.requestId,responseCode:200,
           responseHeaders:[{name:'Content-Type',value:'application/x-shockwave-flash'},
@@ -187,9 +209,15 @@ function attach(window) {
   });
   try {
     wc.debugger.attach('1.3');
+    // Pause chapter-five requests immediately, including a not-yet-known version.
+    // Every paused request still awaits the manifest and exact-URL validation above.
+    const initialPatterns=Object.entries(games).filter(([game])=>game!=='zm5')
+      .map(([,entry])=>({urlPattern:entry.url+'*',requestStage:'Request'}));
+    initialPatterns.push({urlPattern:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v*.swf*',requestStage:'Request'});
+    const bootstrap=wc.debugger.sendCommand('Fetch.enable',{patterns:initialPatterns});
     Promise.all([wc.debugger.sendCommand('Runtime.enable'),wc.debugger.sendCommand('Page.enable'),
-      wc.debugger.sendCommand('Fetch.enable',
-      {patterns:Object.values(games).map(entry=>({urlPattern:entry.url+'*',requestStage:'Request'}))})])
+      bootstrap.then(()=>autoReady).then(()=>wc.isDestroyed()?null:wc.debugger.sendCommand('Fetch.enable',
+      {patterns:Object.values(games).filter(entry=>!entry.disabled).map(entry=>({urlPattern:entry.url+'*',requestStage:'Request'}))}))])
       .catch(error=>errorFor(null,error));
   } catch(error) {errorFor(null,error);}
 }

@@ -22,12 +22,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test zm5-only/attack.test.cjs
+      - run: node --test zm5-only/*.test.cjs
       - name: Test local patch engine with generated data
         run: |
           clang -c zm5-only/PatchDecoder.c -o "$RUNNER_TEMP/decoder.o"
           swiftc -import-objc-header zm5-only/PatchDecoder.h zm5-only/PatchEngine.swift zm5-only/tests/main.swift "$RUNNER_TEMP/decoder.o" -llzma -lz -o "$RUNNER_TEMP/patch-test"
           "$RUNNER_TEMP/patch-test"
+      - name: Test automatic discovery and cache with generated fixtures
+        run: |
+          clang -c zm5-only/PatchDecoder.c -o "$RUNNER_TEMP/auto-decoder.o"
+          swiftc -import-objc-header zm5-only/PatchDecoder.h zm5-only/PatchEngine.swift zm5-only/ChapterFiveAuto.swift zm5-only/auto-tests/main.swift "$RUNNER_TEMP/auto-decoder.o" -llzma -lz -o "$RUNNER_TEMP/auto-test"
+          "$RUNNER_TEMP/auto-test"
       - name: Build distributable without game resources
         run: |
           ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh "$RUNNER_TEMP/造梦西游攻击助手.app"
@@ -68,12 +73,12 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
           ## 下载与首次使用
-          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；支持造梦1 v25928攻击与爆率，造梦2攻击、爆率/Boss掉落、强化/合成、强化石与翅膀修复；造梦3 v261029攻击、爆率/Boss掉落、经验、强化、炼丹与白名单物品/宠物潜能；造梦4 V58.8和造梦5 V47.9支持攻击倍率。
+          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；支持造梦1 v25928攻击与爆率，造梦2攻击、爆率/Boss掉落、强化/合成、强化石与翅膀修复；造梦3 v261029攻击、爆率/Boss掉落、经验、强化、炼丹与白名单物品/宠物潜能；造梦4 V58.8和造梦5支持攻击倍率并自动识别兼容的官方新版，在本机校验结构、生成和缓存补丁。
           - 仅 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证。首次打开可能需要系统安全确认；Intel客户端在Apple Silicon上可能需要Rosetta。
           - 不含客户端、Flash或完整游戏SWF。用户须自行从官方来源下载安装依赖，不能把手游当成兼容客户端。
           - 官方客户端入口：https://webres.61.com/common/flash/common_micro.html?game=mole
           - 原始游戏文件请点击助手中的“官方游戏文件”，自行选择保存位置；助手从4399官方下载并校验。直接打开SWF链接可能被防盗链替换为提示文件。
-          - 首次接入时先切换章节，再选择本地兼容客户端及对应原始SWF；助手仅在本机校验并生成补丁。已有兼容本地补丁可复用。
+          - 首次接入时先切换章节并选择本地兼容客户端。造梦1～4选择对应原始SWF；造梦5在接入时检查官方最新文件，在本机校验伤害方法结构并生成补丁，兼容的新文件无需升级助手，不兼容时停止并提示。
           - 接入前保存并完全退出游戏；接入将把所选客户端本地改名为“造梦西游”，并打开4399官方游戏入口。
           - SHA256SUMS用于校验下载完整性，不能代替签名。构建与本地补丁匹配已验证，其他用户机器与在线战斗不作已实测声明。
           NOTES

@@ -24,7 +24,6 @@
 !/zm5-only/PatchEngine.swift
 !/zm5-only/PatchDecoder.h
 !/zm5-only/PatchDecoder.c
-!/zm5-only/patch-v4790.json
 !/zm5-only/tests/
 !/tools/make_delta.py
 
@@ -59,3 +58,10 @@
 !/assets/preview-zm3.jpg
 !/assets/preview-zm4.jpg
 !/assets/preview-zm5.jpg
+
+!/zm5-only/ChapterFiveAuto.swift
+!/zm5-only/auto-patch.cjs
+!/zm5-only/auto-patch-rule.json
+!/zm5-only/auto-patch.test.cjs
+!/zm5-only/auto-manifest.cjs
+!/zm5-only/auto-tests/
