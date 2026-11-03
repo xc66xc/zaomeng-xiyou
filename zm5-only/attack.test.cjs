@@ -9,7 +9,7 @@ const protocol={zm1:'zm1-helper-1.0',zm2:'zm2-helper-1.0',zm5:'zm5-attack-1.2',z
 const urls={
   zm1:'https://sbai.4399.com/4399swf/upload_swf/ftp5/hanbao/20110624/3/v25928.swf',
   zm2:'https://sbai.4399.com/4399swf/upload_swf/ftp6/hanbao/20110927/4/v25928.swf',
-  zm5:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf',
+  zm5:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4790.swf',
   zm4:'https://sda.4399.com/4399swf/upload_swf/ftp15/csya/20150127/1/v5880.swf',
   zm3:'https://sda.4399.com/4399swf/upload_swf/ftp7/hanbao/20120107/6/v261029.swf'
 };
@@ -167,6 +167,8 @@ test('bridge patches exact chapter URLs and keeps independent settings, telemetr
   assert.equal(h.status('zm3').effective_attack,500);
   assert.equal(h.status('zm2').effective_attack,700);
   assert.equal(h.status('zm1').effective_attack,1100);
+  five.request('zm5','old-five',urls.zm5.replace('v4790','v4780'));await flush();
+  assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId==='old-five'));
   four.request('zm4','other','https://example.org/zm4.swf');
   four.request('zm4','suffix',urls.zm4+'-other.swf');await flush();
   for(const id of ['other','suffix'])assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId===id));

@@ -12,7 +12,7 @@ const games={
   zm2:{protocol:'zm2-helper-1.0',settings:'settings-zm2.json',statusFile:'status-zm2.json',patch:'patched-zm2.swf',
     url:'https://sbai.4399.com/4399swf/upload_swf/ftp6/hanbao/20110927/4/v25928.swf'},
   zm5:{protocol:'zm5-attack-1.2',settings:'settings.json',statusFile:'status.json',patch:'patched-zm5.swf',
-    url:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4780.swf'},
+    url:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v4790.swf'},
   zm4:{protocol:'zm4-attack-1.0',settings:'settings-zm4.json',statusFile:'status-zm4.json',patch:'patched-zm4.swf',
     url:'https://sda.4399.com/4399swf/upload_swf/ftp15/csya/20150127/1/v5880.swf'},
   zm3:{protocol:'zm3-helper-2.0',settings:'settings-zm3.json',statusFile:'status-zm3.json',patch:'patched-zm3.swf',

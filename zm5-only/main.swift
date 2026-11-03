@@ -100,10 +100,10 @@ private enum GameChapter: Int, CaseIterable {
         switch self { case .one: return "七魔王篇"; case .two: return "十殿阎罗篇"; case .three: return "大闹天庭篇"; case .four: return "洪荒大劫篇"; case .five: return "上古天帝篇" }
     }
     var version: String {
-        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "V58.8"; case .five: return "V47.8" }
+        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "V58.8"; case .five: return "V47.9" }
     }
     var filename: String {
-        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "v5880"; case .five: return "v4780" }
+        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "v5880"; case .five: return "v4790" }
     }
     var recipe: String { self == .one ? "patch-zm1-v25928" : "patch-\(filename)" }
     var patchFile: String { "patched-\(game).swf" }
@@ -124,7 +124,7 @@ private enum GameChapter: Int, CaseIterable {
     var gameURL: String { baseURL + filename + ".swf" }
     var referer: String {
         let suffix: String
-        switch self { case .one, .two, .three: suffix = ".htm"; case .four: suffix = "gg.htm"; case .five: suffix = "d.htm" }
+        switch self { case .one, .two, .three: suffix = ".htm"; case .four: suffix = "gg.htm"; case .five: suffix = "h.htm" }
         return baseURL + filename + suffix
     }
     var scopeLabel: String {
