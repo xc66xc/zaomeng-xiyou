@@ -81,16 +81,20 @@ test('chapter changes expire the other callback and discard previous chapter tel
   assert.equal(configure(page,config('zm5')).attack_checks,undefined);
 });
 
-function bridgeHarness() {
+function bridgeHarness(initialFiles={},initialDeferred={}) {
   const app=new EventEmitter(), shortcuts=new Map(), memory=new Map(), sent=[];
   const configs=new Map([['settings-zm1.json',config('zm1',{attack_multiplier:11})],['settings-zm2.json',config('zm2',{attack_multiplier:7})],['settings.json',config('zm5')],['settings-zm4.json',config('zm4',{attack_multiplier:3})],['settings-zm3.json',config('zm3',{attack_multiplier:5})]]);
-  const failures=new Set(),deferred=new Map();
+  const failures=new Set(),deferred=new Map(Object.entries(initialDeferred)),files=new Map(Object.entries({...automaticFiveFiles({game_url:urls.zm5}).files,...initialFiles}));
   let poll,cleared=false;
   const fakeFs={
     async readFile(file) {
       const name=file.slice(file.lastIndexOf('/')+1);
       if(failures.has(name))throw Object.assign(new Error('missing '+name),{code:'ENOENT'});
       if(deferred.has(name))return deferred.get(name);
+      if(files.has(name)) {
+        if(files.get(name)===null)throw Object.assign(new Error('missing '+name),{code:'ENOENT'});
+        return files.get(name);
+      }
       if(name.startsWith('patched-'))return Buffer.from(name);
       if(name==='boss-items-zm3.json')return JSON.stringify(catalog.boss);
       if(name==='zm3-items.json')return JSON.stringify(catalog.items);
@@ -98,6 +102,15 @@ function bridgeHarness() {
       if(name==='zm2-items.json')return JSON.stringify(catalog2.items);
       if(!configs.has(name))throw Object.assign(new Error('missing '+name),{code:'ENOENT'});
       return JSON.stringify(configs.get(name));
+    },
+    async open(file) {
+      const data=Buffer.from(await fakeFs.readFile(file));
+      let closed=false;
+      return {
+        async stat(){assert(!closed);return {size:data.length,isFile:()=>true};},
+        async read(buffer,offset,length,position){assert(!closed);const bytesRead=data.copy(buffer,offset,position,position+length);return {bytesRead};},
+        async close(){closed=true;}
+      };
     },
     async writeFile(file,value){memory.set(file,value);},
     async rename(from,to){memory.set(to,memory.get(from));memory.delete(from);}
@@ -130,7 +143,7 @@ function bridgeHarness() {
         {requestId:id,frameId:'game-frame',request:{url}});}
     };
   }
-  return {app,shortcuts,memory,sent,configs,failures,deferred,window,poll:()=>poll(),
+  return {app,shortcuts,memory,sent,configs,failures,deferred,files,window,poll:()=>poll(),
     status:game=>JSON.parse(memory.get(game==='zm5'?'/test/status.json':`/test/status-${game}.json`)),
     get cleared(){return cleared;}};
 }
@@ -144,7 +157,7 @@ test('bridge patches exact chapter URLs and keeps independent settings, telemetr
   assert(!h.shortcuts.has('CommandOrControl+C')&&!h.shortcuts.has('CommandOrControl+V'));
   assert(h.shortcuts.has('F5'));
   const five=h.window(),four=h.window(),three=h.window(),two=h.window(),one=h.window();await flush();
-  const patterns=h.sent.find(([method])=>method==='Fetch.enable')[1].patterns;
+  const patterns=h.sent.filter(([method])=>method==='Fetch.enable').slice(-1)[0][1].patterns;
   assert.equal(patterns.length,5);
   assert.deepEqual(Array.from(patterns,entry=>entry.urlPattern).sort(),Object.values(urls).map(url=>url+'*').sort());
   five.context();four.context();three.context();two.context(7,'zm2');one.context(7,'zm1');one.request('zm1');five.request('zm5');four.request('zm4');three.request('zm3');two.request('zm2');await flush();
@@ -660,4 +673,127 @@ test('chapter one missing patches fail safely and switching to chapter two isola
   w.request('zm1');await flush();await h.poll();
   assert.equal(w.page.window.__zmxyAttackPower2(100,'Role1','hit1'),100);
   assert.equal(w.page.window.__zmxyAttackPower1(100,'Role1','hit1'),1100);
+});
+
+
+function automaticFiveFiles(overrides={}) {
+  const patch=Buffer.concat([Buffer.from('FWS\x11','binary'),Buffer.alloc(4),Buffer.from('fixture-only')]);
+  patch.writeUInt32LE(patch.length,4);
+  const manifest={schema_version:1,game:'zm5',protocol:protocol.zm5,engine_version:'1',
+    game_url:urls.zm5.replace('v4790','v9999'),source_hash:'a'.repeat(64),
+    result_hash:require('node:crypto').createHash('sha256').update(patch).digest('hex'),...overrides};
+  return {patch,manifest,files:{'auto-zm5.json':JSON.stringify(manifest),'patched-zm5.swf':patch}};
+}
+
+test('automatic chapter five manifest binds only the discovered URL and validated FWS patch',async()=>{
+  const fixture=automaticFiveFiles(),h=bridgeHarness(fixture.files),w=h.window();
+  // Window is created synchronously before the manifest's first asynchronous read finishes.
+  await flush();
+  const patterns=h.sent.filter(([method])=>method==='Fetch.enable').slice(-1)[0][1].patterns;
+  assert(patterns.some(pattern=>pattern.urlPattern===fixture.manifest.game_url+'*'));
+  assert(!patterns.some(pattern=>pattern.urlPattern===urls.zm5+'*'));
+  w.context(7,'zm5');
+  w.request('zm5','old',urls.zm5);
+  w.request('zm5','foreign',fixture.manifest.game_url.replace('sda.4399.com','example.org'));
+  w.request('zm5','suffix',fixture.manifest.game_url+'-other.swf');
+  w.request('zm5','new',fixture.manifest.game_url+'?cache=1');await flush();await h.poll();
+  for(const id of ['old','foreign','suffix'])assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId===id));
+  const reply=h.sent.find(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId==='new');
+  assert(reply);assert(Buffer.from(reply[1].body,'base64').equals(fixture.patch));
+  assert.equal(h.status('zm5').patched_loaded,true);
+  assert.equal(w.page.window.__zmxyAttackPower5(12,'role','monster'),120);
+  // A valid per-boot snapshot stays consistent when files are replaced afterwards.
+  h.files.set('auto-zm5.json','{}');h.files.set('patched-zm5.swf',Buffer.from('wrong'));
+  w.request('zm5','cached',fixture.manifest.game_url);await flush();
+  assert.equal(h.sent.find(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId==='cached')[1].body,reply[1].body);
+});
+
+test('automatic chapter five rejects invalid manifests without blocking other chapters',async()=>{
+  const invalid=[null,{},[],{schema_version:2},{game:'zm3'},{protocol:protocol.zm3},{engine_version:'2'},
+    {source_hash:'bad'},{result_hash:'b'.repeat(63)},
+    ...['https://example.org/v9999.swf',urls.zm3,urls.zm5+'?x=1',urls.zm5+'#x',
+      urls.zm5.replace('https://','http://'),urls.zm5.replace('sda.4399.com','sda.4399.com:443'),
+      urls.zm5.replace('sda.4399.com','user@sda.4399.com'),urls.zm5.replace('/1/','/2/')].map(game_url=>({game_url}))];
+  for(const override of invalid) {
+    const fixture=automaticFiveFiles(override&& !Array.isArray(override)?override:{});
+    if(override===null||Array.isArray(override)||Object.keys(override||{}).length===0)fixture.files['auto-zm5.json']=JSON.stringify(override);
+    const h=bridgeHarness(fixture.files),w=h.window();await flush();
+    const patterns=h.sent.filter(([method])=>method==='Fetch.enable').slice(-1)[0][1].patterns;
+    assert.equal(patterns.length,4);
+    w.request('zm5','blocked',urls.zm5);w.context(7,'zm3');w.request('zm3');await flush();await h.poll();
+    assert(!h.sent.some(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId==='blocked'));
+    assert.equal(h.status('zm5').patched_loaded,false);assert.match(h.status('zm5').error,/自动适配记录校验失败/);
+    assert.equal(h.status('zm3').patched_loaded,true);
+  }
+  for(const text of ['{broken', ' '.repeat(8193)]) {
+    const h=bridgeHarness({'auto-zm5.json':text});h.window();await flush();await h.poll();
+    assert.match(h.status('zm5').error,/自动适配记录校验失败/);
+  }
+});
+
+test('automatic chapter five refuses mismatched, compressed and malformed patch bytes',async()=>{
+  for(const patch of [Buffer.from('wrong'),Buffer.from('CWS\x11fake','binary'),Buffer.alloc(32_000_001)]) {
+    const fixture=automaticFiveFiles();fixture.files['patched-zm5.swf']=patch;
+    if(patch.toString('ascii',0,3)==='CWS') {
+      fixture.manifest.result_hash=require('node:crypto').createHash('sha256').update(patch).digest('hex');
+      fixture.files['auto-zm5.json']=JSON.stringify(fixture.manifest);
+    }
+    const h=bridgeHarness(fixture.files),w=h.window();await flush();w.context(7,'zm5');
+    w.request('zm5','wrong-hash',fixture.manifest.game_url);await flush();await h.poll();
+    assert.equal(h.status('zm5').patched_loaded,false);
+    assert(h.status('zm5').error);
+    assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId==='wrong-hash'));
+    assert(!h.sent.some(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId==='wrong-hash'));
+  }
+});
+
+test('chapter five bootstrap cannot reactivate a request after navigation while manifest is pending',async()=>{
+  const fixture=automaticFiveFiles();
+  let release;const pending=new Promise(resolve=>{release=resolve;});
+  const h=bridgeHarness(fixture.files,{'auto-zm5.json':pending});
+  const w=h.window();
+  assert(h.sent.some(([method,args])=>method==='Fetch.enable'&&args.patterns.some(p=>p.urlPattern.includes('v*.swf'))));
+  assert(!h.sent.some(([method,args])=>method==='Fetch.enable'&&args.patterns.some(p=>p.urlPattern===fixture.manifest.game_url+'*')));w.request('zm5','pending',fixture.manifest.game_url);
+  w.wc.emit('did-start-navigation',{},'https://example.org',false,true);
+  release(fixture.files['auto-zm5.json']);await flush();await h.poll();
+  assert.equal(h.status('zm5').patched_loaded,false);
+  assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId==='pending'));
+  assert(!h.sent.some(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId==='pending'));
+});
+
+
+test('bounded auto-adaptation reads close descriptors and reject growing or oversized files',async()=>{
+  const {readBounded}=require('./auto-manifest.cjs');
+  for(const scenario of [
+    {size:0,actual:0}, {size:8193,actual:8193}, {size:3,actual:4}, {size:4,actual:3}, {size:4,actual:4,regular:false}
+  ]) {
+    let closed=false,reads=0;
+    const source=Buffer.alloc(scenario.actual);
+    const storage={async open(){return {
+      async stat(){return {size:scenario.size,isFile:()=>scenario.regular!==false};},
+      async read(buffer,offset,length,position){reads++;return {bytesRead:source.copy(buffer,offset,position,position+length)};},
+      async close(){closed=true;}
+    };}};
+    await assert.rejects(readBounded(storage,'/test','auto-zm5.json',8192));
+    assert(closed);
+    if(scenario.size===0||scenario.size>8192||scenario.regular===false)assert.equal(reads,0);
+  }
+});
+
+
+test('chapter five never serves a patch without its manifest, including an interrupted first installation',async()=>{
+  // A candidate future-version patch may have been committed before the manifest
+  // if installation was interrupted. Neither the old nor future URL may use it.
+  const future=automaticFiveFiles();
+  const h=bridgeHarness({'auto-zm5.json':null,'patched-zm5.swf':future.patch}),w=h.window();await flush();
+  w.context(7,'zm5');w.request('zm5','old-no-manifest',urls.zm5);
+  w.request('zm5','future-no-manifest',future.manifest.game_url);await flush();await h.poll();
+  for(const id of ['old-no-manifest','future-no-manifest']) {
+    assert(h.sent.some(([method,args])=>method==='Fetch.continueRequest'&&args.requestId===id));
+    assert(!h.sent.some(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId===id));
+  }
+  assert.equal(h.status('zm5').patched_loaded,false);
+  assert.match(h.status('zm5').error,/尚无自动适配记录/);
+  w.context(8,'zm3');w.request('zm3','unaffected');await flush();await h.poll();
+  assert.equal(h.status('zm3').patched_loaded,true);
 });

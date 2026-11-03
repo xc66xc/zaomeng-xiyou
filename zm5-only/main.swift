@@ -100,7 +100,7 @@ private enum GameChapter: Int, CaseIterable {
         switch self { case .one: return "七魔王篇"; case .two: return "十殿阎罗篇"; case .three: return "大闹天庭篇"; case .four: return "洪荒大劫篇"; case .five: return "上古天帝篇" }
     }
     var version: String {
-        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "V58.8"; case .five: return "V47.9" }
+        switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "V58.8"; case .five: return "自动适配" }
     }
     var filename: String {
         switch self { case .one, .two: return "v25928"; case .three: return "v261029"; case .four: return "v5880"; case .five: return "v4790" }
@@ -216,6 +216,10 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         "jin+huo", "jin+tu", "mu+shui", "mu+huo", "mu+tu", "shui+huo", "shui+tu", "huo+tu"]
     private var timer: Timer?
     private var downloadingChapter: GameChapter?
+    private var autoBusy = false
+    private var autoStatus = "正在检查造梦5官方版本…"
+    private var detectedFiveVersion = "自动识别新版"
+
     private var messageUntil = Date.distantPast
 
     private let ink = NSColor(calibratedWhite: 0.14, alpha: 1)
@@ -298,7 +302,10 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         window.setContentSize(NSSize(width: 760, height: (chapter == .one || chapter.hasExtendedFeatures) ? 740 : 620))
         messageUntil = .distantPast
         buildInterface()
-        if let downloading = downloadingChapter {
+        if autoBusy {
+            show(autoStatus)
+            messageUntil = .distantFuture
+        } else if let downloading = downloadingChapter {
             show("正在下载并校验造梦\(downloading.rawValue)游戏文件…")
             messageUntil = .distantFuture
         }
@@ -399,7 +406,7 @@ final class AttackApp: NSObject, NSApplicationDelegate {
             inputRow, feedback,
             label(chapter.scopeNote, secondary: true),
             status, line(), label("游戏接入", size: 20, weight: .semibold),
-            label("首次使用：从官方准备客户端和游戏文件，再接入游戏。", secondary: true),
+            label(chapter == .five ? "首次准备官方客户端；接入时自动检查新版并在本机生成兼容补丁。" : "首次使用：从官方准备客户端和游戏文件，再接入游戏。", secondary: true),
             row([button("官方客户端", #selector(downloadClient)),
                  button("官方游戏文件", #selector(downloadGame)), stretch()]),
             line(), label("倍率范围 1～2147483647 · 单次伤害最高 2147483647\n退出助手后约 4 秒恢复原倍率。", size: 12, secondary: true)])
@@ -807,17 +814,21 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         field.stringValue = "1"; apply()
     }
 
-    private func install() throws {
+    private func install(auto: ChapterFiveAuto.Prepared? = nil) throws {
         let fm = FileManager.default
         let main = client.appendingPathComponent("Contents/Resources/app/main.js")
         let current = try String(contentsOf: main, encoding: .utf8)
         try fm.createDirectory(at: support, withIntermediateDirectories: true)
-        let patch = try localPatch()
-        for name in ["bridge.cjs", "attack.cjs", "zm2-items.json", "boss-items-zm2.json", "zm3-items.json", "boss-items-zm3.json"] {
+        let patch = try auto?.patched ?? localPatch()
+        for name in ["bridge.cjs", "attack.cjs", "auto-manifest.cjs", "zm2-items.json", "boss-items-zm2.json", "zm3-items.json", "boss-items-zm3.json"] {
             let source = Bundle.main.resourceURL!.appendingPathComponent(name)
             try Data(contentsOf: source).write(to: support.appendingPathComponent(name), options: .atomic)
         }
-        try patch.write(to: support.appendingPathComponent(chapter.patchFile), options: .atomic)
+        if let auto = auto {
+            try ChapterFiveAuto(support: support, resources: Bundle.main.resourceURL!).install(auto)
+        } else {
+            try patch.write(to: support.appendingPathComponent(chapter.patchFile), options: .atomic)
+        }
         if !current.hasPrefix("// ZMXY_DROP_CONTROL_BEGIN\n") {
             let backup = support.appendingPathComponent("main-before-zm5-only-\(Int(Date().timeIntervalSince1970)).js")
             try current.write(to: backup, atomically: true, encoding: .utf8)
@@ -830,21 +841,90 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func connect() {
+        guard !autoBusy, downloadingChapter == nil else {
+            show("正在准备游戏文件，请稍候。")
+            messageUntil = .distantFuture
+            return
+        }
         let targetChapter = chapter
         do {
             if runningGame() != nil {
                 show("请保存并完全退出游戏，再点击接入，以便更新客户端名称和模块。"); return
             }
-            try prepareClient(); try install(); try signClient(); try writeSettings()
-            NSWorkspace.shared.openApplication(at: client, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
-                DispatchQueue.main.async {
-                    self?.show(error.map { "打开失败：\($0.localizedDescription)" } ?? "客户端已打开，请进入造梦西游\(targetChapter.rawValue)。")
-                }
+            try prepareClient()
+            if targetChapter == .five {
+                prepareChapterFive(downloadOnly: false)
+                return
             }
+            try install(); try signClient(); try writeSettings()
+            openClient(for: targetChapter)
         } catch { show("接入失败：\(error.localizedDescription)") }
     }
 
+    private func openClient(for targetChapter: GameChapter) {
+        NSWorkspace.shared.openApplication(at: client, configuration: NSWorkspace.OpenConfiguration()) { [weak self] _, error in
+            DispatchQueue.main.async {
+                self?.show(error.map { "打开失败：\($0.localizedDescription)" } ?? "客户端已打开，请进入造梦西游\(targetChapter.rawValue)。")
+            }
+        }
+    }
+
+    private func prepareChapterFive(downloadOnly: Bool) {
+        autoBusy = true
+        autoStatus = downloadOnly ? "正在检查并验证造梦5官方游戏文件…" : "正在检查造梦5新版并生成兼容补丁…"
+        show(autoStatus)
+        messageUntil = .distantFuture
+        let selectedClient = client
+        let service = ChapterFiveAuto(support: support, resources: Bundle.main.resourceURL!)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = Result { try service.prepare(client: selectedClient) }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.autoBusy = false
+                self.messageUntil = .distantPast
+                switch result {
+                case .success(let prepared):
+                    self.detectedFiveVersion = prepared.discovery.version
+                    if downloadOnly {
+                        let panel = NSSavePanel()
+                        panel.title = "保存已验证的造梦5官方原始文件"
+                        panel.nameFieldStringValue = prepared.discovery.filename
+                        panel.allowedContentTypes = [UTType(filenameExtension: "swf") ?? .data]
+                        guard panel.runModal() == .OK, let destination = panel.url else {
+                            self.show("已取消保存造梦5游戏文件。")
+                            return
+                        }
+                        do {
+                            try prepared.original.write(to: destination, options: .atomic)
+                            self.show("造梦5 \(prepared.discovery.version)官方文件已保存，结构验证通过。")
+                        } catch { self.show("保存失败：\(error.localizedDescription)") }
+                        return
+                    }
+                    do {
+                        guard self.runningGame() == nil else {
+                            throw ChapterFiveAuto.failure("准备期间客户端已打开，请保存并完全退出后重新接入。")
+                        }
+                        guard self.client == selectedClient else {
+                            throw ChapterFiveAuto.failure("客户端位置已改变，请重新接入。")
+                        }
+                        // A chapter switch while preparing must not retarget the installation.
+                        let visible = self.chapter
+                        self.chapter = .five
+                        defer { self.chapter = visible }
+                        try self.install(auto: prepared)
+                        try self.signClient()
+                        try self.writeSettings()
+                        self.openClient(for: .five)
+                    } catch { self.show("接入失败：\(error.localizedDescription)") }
+                case .failure(let error):
+                    self.show("造梦5自动适配失败：\(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     private func localPatch() throws -> Data {
+        guard chapter != .five else { throw ChapterFiveAuto.failure("造梦5请通过自动结构校验接入。") }
         let recipe = try JSONDecoder().decode(PatchRecipe.self,
             from: Data(contentsOf: Bundle.main.url(forResource: chapter.recipe, withExtension: "json")!))
         func verified(_ url: URL) -> Data? {
@@ -875,6 +955,23 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func downloadGame() {
+        if autoBusy {
+            show(autoStatus)
+            messageUntil = .distantFuture
+            return
+        }
+        if chapter == .five {
+            guard downloadingChapter == nil else {
+                show("正在下载其他章节，请稍候。")
+                messageUntil = .distantFuture
+                return
+            }
+            do {
+                if runningGame() == nil { try prepareClient() }
+                prepareChapterFive(downloadOnly: true)
+            } catch { show("准备客户端失败：\(error.localizedDescription)") }
+            return
+        }
         if let downloading = downloadingChapter {
             show("正在下载造梦\(downloading.rawValue)游戏文件，请稍候。")
             messageUntil = .distantFuture
@@ -957,7 +1054,9 @@ final class AttackApp: NSObject, NSApplicationDelegate {
     private func signClient() throws {
         let configURL = client.appendingPathComponent("Contents/Resources/app/config.json")
         var config = try JSONSerialization.jsonObject(with: Data(contentsOf: configURL)) as! [String: Any]
-        config["appUrl"] = "https://www.4399.com/flash/zmhj.htm"
+        config["appUrl"] = chapter == .five
+            ? "https://www.4399.com/flash/zmhj.htm?zmxy_auto=\(UUID().uuidString)"
+            : "https://www.4399.com/flash/zmhj.htm"
         try JSONSerialization.data(withJSONObject: config).write(to: configURL, options: .atomic)
         let signer = Process()
         signer.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
@@ -989,7 +1088,8 @@ final class AttackApp: NSObject, NSApplicationDelegate {
         }
         if let error = value["error"] as? String, !error.isEmpty { status.stringValue = error; return }
         guard value["patched_loaded"] as? Bool == true else {
-            status.stringValue = "已连接客户端，请进入造梦西游\(chapter.rawValue)（当前补丁适配 \(chapter.version)）。"; return
+            let version = chapter == .five ? detectedFiveVersion : chapter.version
+            status.stringValue = "已连接客户端，请进入造梦西游\(chapter.rawValue)（\(version)）。"; return
         }
         if let base = value["base_attack"] as? Double, let power = value["effective_attack"] as? Double {
             status.stringValue = String(format: "已接入 · 当前 %lld 倍 · 最近伤害 %.0f → %.0f", multiplier, base, power)
