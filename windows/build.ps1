@@ -103,7 +103,16 @@ try {
     if (Test-Path -LiteralPath $packageDirectory) { Remove-Item -LiteralPath $packageDirectory -Recurse -Force }
     Move-Item -LiteralPath $stagingDirectory -Destination $packageDirectory
     Compress-Archive -LiteralPath $packageDirectory -DestinationPath $archivePath -CompressionLevel Optimal -Force
-    $hash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $archiveStream = $null
+    $sha256 = $null
+    try {
+        $sha256 = [Security.Cryptography.SHA256]::Create()
+        $archiveStream = [IO.File]::OpenRead($archivePath)
+        $hash = [BitConverter]::ToString($sha256.ComputeHash($archiveStream)).Replace('-', '').ToLowerInvariant()
+    } finally {
+        if ($null -ne $archiveStream) { $archiveStream.Dispose() }
+        if ($null -ne $sha256) { $sha256.Dispose() }
+    }
     [IO.File]::WriteAllText($checksumPath, "$hash  $packageName.zip`n", $utf8)
     Write-Output "Built: $packageDirectory\ZMXYHelper.exe"
     Write-Output "Archive: $archivePath"
