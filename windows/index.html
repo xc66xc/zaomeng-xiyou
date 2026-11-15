@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>造梦西游攻击助手</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header><div><span class="eyebrow">WINDOWS · <span id="version"></span></span><h1>造梦西游攻击助手</h1></div><span id="connection" class="badge">游戏未打开</span></header>
+    <nav id="chapters" aria-label="选择章节">
+      <button data-game="zm1">造梦1</button><button data-game="zm2">造梦2</button><button data-game="zm3">造梦3</button><button data-game="zm4">造梦4</button><button data-game="zm5" class="selected">造梦5</button>
+    </nav>
+    <section class="chapter-heading"><div><span id="chapter-version" class="eyebrow">自动适配</span><h2 id="chapter-title">上古天帝篇</h2></div><p id="scope">角色、宠物、幻兽 · 仅单人副本</p></section>
+    <section class="card attack-card" aria-labelledby="attack-title">
+      <div><h3 id="attack-title">攻击倍率</h3><p id="scope-note">普通与技能伤害生效，独立真实伤害不变。</p></div>
+      <form id="attack-form" class="attack-controls"><label class="sr-only" for="attack">攻击倍率</label><div class="number-wrap"><input id="attack" type="text" inputmode="numeric" value="1" autocomplete="off" maxlength="10"><span>倍</span></div><button class="primary" type="submit">应用倍率</button><button id="reset-attack" type="button">恢复1倍</button></form>
+    </section>
+    <section id="features" class="card" hidden>
+      <div class="feature-tabs" role="tablist" aria-label="功能分类"><button id="combat-tab" data-page="combat" role="tab" aria-selected="true">战斗与掉落</button><button id="craft-tab" data-page="craft" role="tab" aria-selected="false">强化与合成</button><button id="items-tab" data-page="items" role="tab" aria-selected="false">物品与宠物</button></div>
+      <form id="features-form">
+        <div id="combat" class="feature-page" role="tabpanel" aria-labelledby="combat-tab">
+          <div class="form-row"><label for="drop-mode">普通装备爆率</label><select id="drop-mode"><option value="original">原始爆率</option><option value="multiplier">倍率</option><option value="guaranteed">必掉</option></select><label for="drop" class="sr-only">爆率倍率</label><input id="drop" value="1" inputmode="numeric" maxlength="4"><span class="hint">倍（1～1000）</span></div>
+          <div id="experience-row" class="form-row"><label for="experience">怪物经验倍率</label><input id="experience" value="1" inputmode="numeric" maxlength="4"><span class="hint">倍（1～1000）</span></div>
+          <div id="boss-row" class="form-row"><label class="check"><input id="boss-enabled" type="checkbox">Boss指定掉落</label><label for="boss" class="sr-only">Boss掉落物品</label><select id="boss" class="wide"></select></div>
+          <p class="hint">只作用于原有掉落表，保留游戏拾取路径。</p>
+        </div>
+        <div id="craft" class="feature-page" role="tabpanel" aria-labelledby="craft-tab" hidden>
+          <label class="check"><input id="strength" type="checkbox">装备强化必成</label><label id="fusion-row" class="check"><input id="fusion" type="checkbox">装备合成必成</label><label id="attributes-row" class="check"><input id="attributes" type="checkbox">炼丹最高基础属性</label>
+          <div id="elements-row" class="form-row"><label for="elements">法宝五行</label><select id="elements"></select></div>
+          <p class="hint">仍需原有材料；炼丹设置仅影响新制作的属性。</p>
+        </div>
+        <div class="feature-footer"><button class="primary" type="submit">应用设置</button><span class="hint">每个章节独立保存本次设置</span></div>
+      </form>
+      <form id="items" class="feature-page" role="tabpanel" aria-labelledby="items-tab" hidden>
+        <div class="form-row"><label for="category">分类</label><select id="category"></select><label for="item" class="sr-only">物品</label><select id="item" class="wide"></select></div>
+        <div class="form-row"><label for="amount">数量</label><input id="amount" value="1" inputmode="numeric"><label id="player-row" for="player">玩家<select id="player"><option value="1">玩家1</option><option value="2">玩家2</option></select></label><button class="primary" type="submit">添加一次</button></div>
+        <p id="item-note" class="hint">仅点击时执行一次，收到回执后请在游戏中自行保存。</p><p id="command-result" role="status"></p>
+      </form>
+    </section>
+    <section class="status-box" aria-live="polite"><span id="status-dot"></span><div><strong id="status-title">先接入游戏，再应用倍率</strong><p id="status-detail">首次使用请先安装带 PepperFlash 的兼容 Electron 微端。</p></div></section>
+    <div class="display-options"><label for="display-mode">游戏显示</label><select id="display-mode"><option value="native">原生像素（清晰，窗口较小）</option><option value="system">跟随系统缩放（窗口较大）</option></select><span class="hint">保存并退出游戏后，重新接入生效</span></div>
+    <section class="actions"><button id="connect" class="primary">接入并打开游戏</button><button id="download-game">官方游戏文件</button><button id="download-client">官方下载客户端 ↗</button></section>
+    <footer><div class="client-row"><span id="client-path">尚未选择兼容 Windows 客户端</span><button id="choose-client" class="text-button">选择客户端</button><button id="restore-client" class="text-button">恢复客户端</button></div><p>接入前请保存并完全退出游戏。关闭助手后，约4秒恢复原倍率。</p></footer>
+  </main>
+  <script src="renderer.js"></script>
+</body>
+</html>

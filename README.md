@@ -30,9 +30,13 @@
 
 ## 下载与使用
 
-从本仓库 **Releases** 下载 `macos-arm64.zip`，解压后打开「造梦西游攻击助手.app」。软件版本以 `zm5-only/Info.plist` 为唯一来源。
+macOS 从本仓库 **Releases** 下载文件名以 `macos-arm64.zip` 结尾的包，解压后打开「造梦西游攻击助手.app」。软件版本以 `zm5-only/Info.plist` 为唯一来源。
 
-当前只验证 Apple Silicon、macOS 12+。应用使用本地 ad-hoc 签名，未做 Apple Developer ID 签名或公证，首次打开可能遇到系统安全确认。兼容客户端为旧版 Intel Electron/PepperFlash 微端，Apple Silicon 可能需要系统安装 Rosetta。不能把 App Store 手游或普通浏览器当成这个客户端。
+新增 Windows x64 助手，保留五章节设置和共享补丁规则。Windows 构建产物以 `windows-x64.zip` 结尾，完整解压后打开 `ZMXYHelper.exe`；不要在压缩包内直接运行，也不要只复制 EXE。需要用户自行安装包含可写 `resources/app/main.js` 的兼容旧 Electron/PepperFlash **Windows 客户端**，在助手中选择其 EXE。助手内提供接入前备份与「恢复客户端」。Windows 版本未代码签名，客户端接入和实际游戏效果需在所选兼容客户端上验收；详见 [Windows 使用与构建说明](windows/README.md)。
+
+Windows 游戏显示默认使用「原生像素」，高 DPI 屏幕上窗口较小、优先保持清晰；也可选择「跟随系统缩放」放大窗口，旧客户端在 150% 等缩放比例下可能模糊。更改后保存并完全退出游戏，再次接入时生效；详见 [游戏显示模式](windows/README.md#游戏显示模式)。
+
+macOS 版当前只验证 Apple Silicon、macOS 12+。应用使用本地 ad-hoc 签名，未做 Apple Developer ID 签名或公证，首次打开可能遇到系统安全确认。兼容客户端为旧版 Intel Electron/PepperFlash 微端，Apple Silicon 可能需要系统安装 Rosetta。不能把 App Store 手游或普通浏览器当成这个客户端。以下 `.app`、本地改名及签名说明适用于 macOS；Windows 操作见上方链接。
 
 发布包**不包含第三方客户端、Flash插件或完整游戏SWF**。首次使用需用户自行下载：
 
@@ -62,14 +66,26 @@
 
 ## 构建与验证
 
-需要 Xcode Command Line Tools、Node.js 22+、Python 3.10+：
+macOS 需要 Xcode Command Line Tools、Node.js 22+、Python 3.10+：
 
 ```sh
 node --test zm5-only/*.test.cjs
 ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh /tmp/造梦西游攻击助手.app
 ```
 
-造梦5自动适配直接复用已安装兼容客户端内的脚本运行环境，无需另外安装Node.js、Java或反编译工具；其字节码解析器和注入规则为自写代码。新版本必须保持被验证的伤害方法结构兼容，不能保证任何未来更新都自动成功。缓存只保留最近三份；首次接入和检查官方文件需要联网，网络失败不会静默使用旧版。
+Windows x64 需要 Node.js 22.12+ 与 Git，无需 Swift、Xcode 或 Python：
+
+```powershell
+cd windows
+npm ci
+npm test
+npm start
+npm run build
+```
+
+Windows 包输出到仓库根目录 `dist`，不含客户端、Flash 或完整游戏 SWF。具体目录结构、依赖下载和校验方式见 [Windows 说明](windows/README.md)。CI 保留 macOS 原生构建验证，并增加 Windows 测试与无 SWF 打包；两个平台检查通过后，版本 Tag 发布流程收集两种产物。
+
+造梦5自动适配在 macOS 直接复用已安装兼容客户端内的脚本运行环境，Windows 使用助手自带运行时，用户无需另外安装Node.js、Java或反编译工具；其字节码解析器和注入规则为自写代码。新版本必须保持被验证的伤害方法结构兼容，不能保证任何未来更新都自动成功。缓存只保留最近三份；首次接入和检查官方文件需要联网，网络失败不会静默使用旧版。
 
 原始游戏不在构建输入中：发布包仅包含自写程序、脚本和每篇少量变换指令。造梦1～4的本地生成结果须匹配已验证哈希；造梦5按类名、方法签名和规范化指令结构校验，再重新定位常量和寄存器、调整跳转与异常区间，生成后记录独立哈希，拒绝结构不匹配的文件。
 
