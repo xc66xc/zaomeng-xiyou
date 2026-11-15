@@ -103,6 +103,12 @@ test('process detection counts browser processes and unknown command lines, excl
   assert.deepEqual(liveProcessIds(children),[]);
   assert.deepEqual(liveProcessIds([{ProcessId:5001,ThreadCount:2,CommandLine:null},{ProcessId:5002,ThreadCount:2}]),[5001,5002]);
   assert.deepEqual(liveProcessIds([{ProcessId:5003,ThreadCount:2,CommandLine:'client.exe "--type=renderer"'},{ProcessId:5004,ThreadCount:2,CommandLine:'client.exe --type utility'}]),[]);
+  assert.deepEqual(liveProcessIds([
+    {ProcessId:5005,ThreadCount:2,CommandLine:'"D:\\Games --type=backup\\Mole.exe" --force-device-scale-factor=1'},
+    {ProcessId:5006,ThreadCount:2,ExecutablePath:'D:\\Games --type=backup\\Mole.exe',CommandLine:'D:\\Games --type=backup\\Mole.exe --force-device-scale-factor=1'},
+    {ProcessId:5007,ThreadCount:2,CommandLine:'client.exe --user-data-dir="D:\\Games --type=backup\\profile"'},
+    {ProcessId:5008,ThreadCount:2,CommandLine:'"D:\\Games --type=backup\\Mole.exe" --type=renderer'}
+  ]),[5005,5006,5007]);
 });
 test('orphan renderers do not block reconnect or make an exited browser heartbeat valid',async t=>{
   const f=await fixture(t),main={ProcessId:4321,ThreadCount:19,CommandLine:'client.exe'};

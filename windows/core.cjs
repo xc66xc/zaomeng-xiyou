@@ -33,11 +33,27 @@ function liveProcessIds(records) {
   // handle. Such a process has no threads and cannot own an active game window.
   // Old clients can also leave live renderers after their browser exits. Only
   // browser PIDs own the bridge; retain unknown command lines conservatively.
-  const childFlag=/(?:^|\s)(?:"--type(?:=[^"]*)?"|--type(?:=|\s|$))/;
+  const browserCommand=value=>{
+    if(typeof value.CommandLine!=='string')return true;
+    let argumentsText=value.CommandLine.trimStart();
+    const executable=value.ExecutablePath;
+    // CreateProcess may receive an explicit executable alongside an unquoted
+    // argv[0]. Prefer its exact path; otherwise remove the standard first token.
+    if(typeof executable==='string'&&executable&&
+        argumentsText.slice(0,executable.length).toLowerCase()===executable.toLowerCase()&&
+        (argumentsText.length===executable.length||/\s/.test(argumentsText[executable.length])))argumentsText=argumentsText.slice(executable.length);
+    else if(argumentsText.startsWith('"')) {
+      const end=argumentsText.indexOf('"',1);
+      if(end<0)return true;
+      argumentsText=argumentsText.slice(end+1);
+    } else argumentsText=argumentsText.replace(/^\S*/, '');
+    const parameters=argumentsText.match(/(?:[^\s"]+|"[^"]*")+/g)||[];
+    return !parameters.some(parameter=>/^"?--type(?:=|"?$)/.test(parameter));
+  };
   return (Array.isArray(records)?records:[records]).filter(value=>value&&
     Number.isSafeInteger(value.ProcessId)&&value.ProcessId>0&&
     Number.isSafeInteger(value.ThreadCount)&&value.ThreadCount>0&&
-    (typeof value.CommandLine!=='string'||!childFlag.test(value.CommandLine))).map(value=>value.ProcessId);
+    browserCommand(value)).map(value=>value.ProcessId);
 }
 function defaults(game) {
   const value={game,protocol:chapter(game).protocol,attack_multiplier:1};
@@ -250,7 +266,7 @@ class HelperService {
     if(!exe)return [];
     if(this.processQuery)return this.processQuery(exe);
     if(process.platform!=='win32')return [];
-    const script='@(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $_.ExecutablePath -eq $env:ZMXY_CLIENT_PATH } | Select-Object ProcessId,ThreadCount,CommandLine) | ConvertTo-Json -Compress';
+    const script='@(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $_.ExecutablePath -eq $env:ZMXY_CLIENT_PATH } | Select-Object ProcessId,ThreadCount,CommandLine,ExecutablePath) | ConvertTo-Json -Compress';
     try {
       const {stdout}=await execute('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{windowsHide:true,timeout:10000,maxBuffer:65536,env:{...process.env,ZMXY_CLIENT_PATH:exe}});
       const parsed=stdout.trim()?JSON.parse(stdout):[];
