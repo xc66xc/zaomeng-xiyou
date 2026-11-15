@@ -9,7 +9,9 @@ const {HelperService,unpack,applyRecipe,validateConfig,defaults,frameURL,discove
 function swf(body=Buffer.from([0,0,0,0,0,0,0])) {const header=Buffer.alloc(8);header.write('FWS');header[3]=15;header.writeUInt32LE(body.length+8,4);return Buffer.concat([header,body]);}
 function recipe(source,result) {return {sourceHash:hash(source),resultHash:hash(result),resultSize:result.length,operations:[{add:result.toString('base64')}]};}
 async function fixture(t) {
-  const root=await fs.mkdtemp(path.join(os.tmpdir(),'zmxy-windows-test-'));
+  // Windows CI may expose TEMP through an 8.3 alias (RUNNER~1); match the
+  // canonical paths returned by inspectClient instead of comparing aliases.
+  const root=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'zmxy-windows-test-')));
   t.after(()=>fs.rm(root,{recursive:true,force:true}));
   const resources=path.join(root,'shared'),support=path.join(root,'support'),client=path.join(root,'client'),app=path.join(client,'resources','app');
   await fs.mkdir(resources,{recursive:true});await fs.mkdir(path.join(app,'plugins'),{recursive:true});
