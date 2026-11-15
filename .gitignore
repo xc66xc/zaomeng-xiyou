@@ -65,3 +65,13 @@
 !/zm5-only/auto-patch.test.cjs
 !/zm5-only/auto-manifest.cjs
 !/zm5-only/auto-tests/
+
+!/windows/
+/windows/*
+!/windows/*.cjs
+!/windows/*.js
+!/windows/*.html
+!/windows/*.css
+!/windows/*.json
+!/windows/*.ps1
+!/windows/README.md

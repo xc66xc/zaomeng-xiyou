@@ -38,9 +38,43 @@ jobs:
           ZMXY_PACKAGE_WITHOUT_GAME=1 zsh zm5-only/build.sh "$RUNNER_TEMP/造梦西游攻击助手.app"
           test -z "$(find "$RUNNER_TEMP/造梦西游攻击助手.app" -iname '*.swf' -print)"
       - run: python3 -m py_compile tools/build_patch1.py tools/build_patch.py tools/build_patch4.py tools/build_patch2.py tools/build_patch2_commands.py tools/build_patch3.py tools/build_patch3_features.py tools/build_patch3_commands.py tools/make_delta.py
+  verify-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: windows/package-lock.json
+      - name: Install Windows helper dependencies and Electron
+        working-directory: windows
+        run: npm ci
+      - name: Test shared logic and Windows integration
+        working-directory: windows
+        run: npm test
+      - name: Build Windows x64 distribution without game resources
+        working-directory: windows
+        run: npm run build
+      - name: Verify distribution excludes game SWF
+        shell: pwsh
+        run: |
+          $gameFiles = @(Get-ChildItem -LiteralPath dist -Recurse -File -Filter '*.swf')
+          if ($gameFiles.Count -ne 0) { throw 'Unexpected game SWF in Windows distribution.' }
+          $executables = @(Get-ChildItem -LiteralPath dist -Recurse -File -Filter 'ZMXYHelper.exe')
+          if ($executables.Count -ne 1) { throw 'Windows helper executable is missing or duplicated.' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-x64
+          path: |
+            dist/*-windows-x64.zip
+            dist/*-windows-x64.sha256
+          if-no-files-found: error
   release:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    needs: verify
+    needs: [verify, verify-windows]
     runs-on: macos-14
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
@@ -60,6 +94,15 @@ jobs:
           test "$RELEASE_TAG" = "v$version"
           test "$(git cat-file -t "$RELEASE_TAG")" = tag
           git merge-base --is-ancestor HEAD origin/main
+      - name: Collect verified Windows distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-x64
+          path: dist
+      - name: Verify Windows artifact version and checksum
+        run: |
+          test -f "dist/zaomeng-xiyou-$RELEASE_TAG-windows-x64.zip"
+          (cd dist && shasum -a 256 -c "zaomeng-xiyou-$RELEASE_TAG-windows-x64.sha256")
       - name: Build and package
         run: |
           mkdir -p dist
@@ -73,15 +116,25 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/notes.md" <<'NOTES'
           ## 下载与首次使用
-          - 附件为可运行的 macOS Apple Silicon 助手，不是源码包；支持造梦1 v25928攻击与爆率，造梦2攻击、爆率/Boss掉落、强化/合成、强化石与翅膀修复；造梦3 v261029攻击、爆率/Boss掉落、经验、强化、炼丹与白名单物品/宠物潜能；造梦4 V58.8和造梦5支持攻击倍率并自动识别兼容的官方新版，在本机校验结构、生成和缓存补丁。
-          - 仅 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证。首次打开可能需要系统安全确认；Intel客户端在Apple Silicon上可能需要Rosetta。
+          - macos-arm64.zip 为 macOS Apple Silicon 助手，windows-x64.zip 为 Windows x64 助手；均为可运行程序。支持造梦1 v25928攻击与爆率，造梦2攻击、爆率/Boss掉落、强化/合成、强化石与翅膀修复；造梦3 v261029攻击、爆率/Boss掉落、经验、强化、炼丹与白名单物品/宠物潜能；造梦4 V58.8和造梦5支持攻击倍率并自动识别兼容的官方新版，在本机校验结构、生成和缓存补丁。
+          - macOS 仅 ad-hoc 签名，未做 Developer ID 签名或 Apple 公证。首次打开可能需要系统安全确认；Intel客户端在Apple Silicon上可能需要Rosetta。
+          - Windows：完整解压后打开 ZMXYHelper.exe，不要只复制 EXE。Windows 版本未代码签名。需自行安装包含可写 resources/app/main.js 的兼容旧 Electron/PepperFlash Windows 客户端，并选择客户端 EXE；助手使用的现代 Electron 本身不运行 Flash。客户端和实际游戏效果需在所选版本上验收，不将 CI 通过视为实战验收。
           - 不含客户端、Flash或完整游戏SWF。用户须自行从官方来源下载安装依赖，不能把手游当成兼容客户端。
           - 官方客户端入口：https://webres.61.com/common/flash/common_micro.html?game=mole
           - 原始游戏文件请点击助手中的“官方游戏文件”，自行选择保存位置；助手从4399官方下载并校验。直接打开SWF链接可能被防盗链替换为提示文件。
           - 首次接入时先切换章节并选择本地兼容客户端。造梦1～4选择对应原始SWF；造梦5在接入时检查官方最新文件，在本机校验伤害方法结构并生成补丁，兼容的新文件无需升级助手，不兼容时停止并提示。
-          - 接入前保存并完全退出游戏；接入将把所选客户端本地改名为“造梦西游”，并打开4399官方游戏入口。
+          - 接入前保存并完全退出游戏；macOS 接入将把所选客户端本地改名为“造梦西游”。Windows 会备份客户端入口与配置，支持退出游戏后通过“恢复客户端”撤销接入。接入后打开4399官方游戏入口。
           - SHA256SUMS用于校验下载完整性，不能代替签名。构建与本地补丁匹配已验证，其他用户机器与在线战斗不作已实测声明。
           NOTES
+          if [[ "$RELEASE_TAG" == v5.10.0 ]]; then
+            cat >> "$RUNNER_TEMP/notes.md" <<'NOTES'
+
+          ## v5.10.0 更新与验证
+          - 新增 Windows x64 助手：五章节设置、官方文件获取、本机补丁生成与缓存、客户端接入备份及恢复；接入等待客户端回执，异常退出或超时会明确提示。
+          - Windows 默认使用“原生像素”启动游戏，改善高 DPI 系统缩放导致的模糊；窗口较小，也可选择“跟随系统缩放”。设置保存在本机，保存并完全退出游戏后，下次接入生效。
+          - Windows 本机 61 项自动化测试通过；造梦1～4官方原始文件重建匹配预期哈希；造梦5 v4800.swf 自动适配、兼容 Windows 客户端启动及补丁加载通过。用户已确认原生像素模式画面较清晰。这些验证不代表全部角色、关卡及游戏内功能均已实战覆盖。
+          NOTES
+          fi
           if [[ "$RELEASE_TAG" == v5.2.0 ]]; then
             echo "注意：v5.2.0尚无游戏文件下载按钮，请优先使用v5.2.1；直接游戏链接可能被防盗链拦截。" >> "$RUNNER_TEMP/notes.md"
           fi

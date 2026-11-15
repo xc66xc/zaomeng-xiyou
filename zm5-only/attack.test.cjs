@@ -3,6 +3,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
+const path=require('node:path');
 const {EventEmitter}=require('node:events');
 const update=require('./attack.cjs');
 const protocol={zm1:'zm1-helper-1.0',zm2:'zm2-helper-1.0',zm5:'zm5-attack-1.2',zm4:'zm4-attack-1.0',zm3:'zm3-helper-2.0'};
@@ -82,13 +83,14 @@ test('chapter changes expire the other callback and discard previous chapter tel
 });
 
 function bridgeHarness(initialFiles={},initialDeferred={}) {
+  const home=path.join(__dirname,'测试客户端 with spaces');
   const app=new EventEmitter(), shortcuts=new Map(), memory=new Map(), sent=[];
   const configs=new Map([['settings-zm1.json',config('zm1',{attack_multiplier:11})],['settings-zm2.json',config('zm2',{attack_multiplier:7})],['settings.json',config('zm5')],['settings-zm4.json',config('zm4',{attack_multiplier:3})],['settings-zm3.json',config('zm3',{attack_multiplier:5})]]);
   const failures=new Set(),deferred=new Map(Object.entries(initialDeferred)),files=new Map(Object.entries({...automaticFiveFiles({game_url:urls.zm5}).files,...initialFiles}));
   let poll,cleared=false;
   const fakeFs={
     async readFile(file) {
-      const name=file.slice(file.lastIndexOf('/')+1);
+      const name=path.basename(file);
       if(failures.has(name))throw Object.assign(new Error('missing '+name),{code:'ENOENT'});
       if(deferred.has(name))return deferred.get(name);
       if(files.has(name)) {
@@ -121,10 +123,10 @@ function bridgeHarness(initialFiles={},initialDeferred={}) {
       if(name==='fs')return {promises:fakeFs};
       if(name==='./attack.cjs')return update;
       return require(name);
-    },__dirname:'/test',process,Buffer,Date,Set,JSON,Number,Promise,
+    },__dirname:home,process,Buffer,Date,Set,JSON,Number,Promise,
     setInterval(fn){poll=fn;return 1;},clearInterval(){cleared=true;}
   });
-  vm.runInContext(fs.readFileSync(__dirname+'/bridge.cjs','utf8'),sandbox);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'bridge.cjs'),'utf8'),sandbox);
   function window() {
     const plugins=[];
     const debuggerApi=new EventEmitter(),page=vm.createContext({window:{},document:{querySelectorAll:()=>plugins}}),wc=new EventEmitter();
@@ -144,7 +146,7 @@ function bridgeHarness(initialFiles={},initialDeferred={}) {
     };
   }
   return {app,shortcuts,memory,sent,configs,failures,deferred,files,window,poll:()=>poll(),
-    status:game=>JSON.parse(memory.get(game==='zm5'?'/test/status.json':`/test/status-${game}.json`)),
+    status:game=>JSON.parse(memory.get(path.join(home,game==='zm5'?'status.json':`status-${game}.json`))),
     get cleared(){return cleared;}};
 }
 
