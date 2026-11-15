@@ -96,6 +96,29 @@ test('process detection excludes exited Electron processes still retained by Win
   assert.deepEqual(liveProcessIds({ProcessId:4321,ThreadCount:19}),[4321]);
   assert.deepEqual(liveProcessIds([null,{ProcessId:1},{ProcessId:0,ThreadCount:20},{ProcessId:2,ThreadCount:0}]),[]);
 });
+test('process detection counts browser processes and unknown command lines, excluding Electron children',()=>{
+  const main={ProcessId:4321,ThreadCount:19,CommandLine:'"D:\\测试客户端\\client.exe" --force-device-scale-factor=1'};
+  const children=['renderer','gpu-process','ppapi','utility'].map((type,index)=>({ProcessId:4400+index,ThreadCount:16,CommandLine:`"D:\\测试客户端\\client.exe" --type=${type} --lang=zh-CN`}));
+  assert.deepEqual(liveProcessIds([main,...children]),[4321]);
+  assert.deepEqual(liveProcessIds(children),[]);
+  assert.deepEqual(liveProcessIds([{ProcessId:5001,ThreadCount:2,CommandLine:null},{ProcessId:5002,ThreadCount:2}]),[5001,5002]);
+  assert.deepEqual(liveProcessIds([{ProcessId:5003,ThreadCount:2,CommandLine:'client.exe "--type=renderer"'},{ProcessId:5004,ThreadCount:2,CommandLine:'client.exe --type utility'}]),[]);
+});
+test('orphan renderers do not block reconnect or make an exited browser heartbeat valid',async t=>{
+  const f=await fixture(t),main={ProcessId:4321,ThreadCount:19,CommandLine:'client.exe'};
+  const child={ProcessId:4400,ThreadCount:16,CommandLine:'client.exe --type=renderer'};
+  let processes=[child];f.service.processQuery=async()=>liveProcessIds(processes);
+  await f.service.selectClient(f.exe);
+  processes=[main,child];f.service.queryAt=0;
+  const file=path.join(f.support,'status-zm2.json');
+  await fs.writeFile(file,JSON.stringify({protocol:CHAPTERS.zm2.protocol,pid:4321,updated_at:Date.now(),patched_loaded:true}));
+  await f.service.tick();assert.equal(f.service.snapshot().running,true);assert.equal(f.service.snapshot().statuses.zm2.pid,4321);
+  processes=[child];f.service.queryAt=0;await f.service.tick();
+  assert.equal(f.service.snapshot().running,false);assert.equal(f.service.snapshot().statuses.zm2,undefined);
+  await fs.writeFile(file,JSON.stringify({protocol:CHAPTERS.zm2.protocol,pid:4400,updated_at:Date.now(),patched_loaded:true}));
+  await f.service.tick();assert.equal(f.service.snapshot().statuses.zm2,undefined);
+  await f.service.ensureStopped();
+});
 test('saved client selection survives restart and invalid selections report a warning',async t=>{
   const f=await fixture(t);await f.service.selectClient(f.exe);await f.service.shutdown();
   const restarted=new HelperService({support:f.support,resources:f.resources,processQuery:async()=>[]});
