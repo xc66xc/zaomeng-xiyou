@@ -36,6 +36,8 @@ macOS 从本仓库 **Releases** 下载文件名以 `macos-arm64.zip` 结尾的�
 
 Windows 游戏显示默认使用「原生像素」，高 DPI 屏幕上窗口较小、优先保持清晰；也可选择「跟随系统缩放」放大窗口，旧客户端在 150% 等缩放比例下可能模糊。更改后保存并完全退出游戏，再次接入时生效；详见 [游戏显示模式](windows/README.md#游戏显示模式)。
 
+v5.10.1 修复 Windows 兼容客户端关闭窗口时可能卡住的问题。页面阻止关闭时默认返回游戏，确认已保存后可继续关闭；取消关闭会恢复原章节接入，整个流程不强制结束进程。详见 [关闭游戏](windows/README.md#关闭游戏)。
+
 macOS 版当前只验证 Apple Silicon、macOS 12+。应用使用本地 ad-hoc 签名，未做 Apple Developer ID 签名或公证，首次打开可能遇到系统安全确认。兼容客户端为旧版 Intel Electron/PepperFlash 微端，Apple Silicon 可能需要系统安装 Rosetta。不能把 App Store 手游或普通浏览器当成这个客户端。以下 `.app`、本地改名及签名说明适用于 macOS；Windows 操作见上方链接。
 
 发布包**不包含第三方客户端、Flash插件或完整游戏SWF**。首次使用需用户自行下载：
