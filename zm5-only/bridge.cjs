@@ -1,5 +1,5 @@
 'use strict';
-const {app,globalShortcut,Menu}=require('electron');
+const {app,globalShortcut,Menu,dialog}=require('electron');
 if (typeof app.setName === 'function') app.setName('造梦西游');
 const fs=require('fs').promises;
 const path=require('path');
@@ -69,9 +69,10 @@ function commandIdentity(command) {
 async function handleCommand(controller,contextId,generation) {
   const game=controller.game;
   if(!['zm2','zm3'].includes(game))return;
+  const session=controller.session;
   const entry=games[game],command=entry.config.command;
   if(!commandIdentity(command)||handledCommands.has(`${game}:${command.id}`)||!entry.status.command_ready)return;
-  if(controller.generation!==generation)return;
+  if(controller.closing||controller.generation!==generation)return;
   const age=Date.now()-entry.config.updated_at;
   if(!Number.isFinite(age)||age<0||age>3500)return;
   if(handledCommands.size>=1024) {
@@ -102,6 +103,7 @@ async function handleCommand(controller,contextId,generation) {
         return p.length===1?p[0][${JSON.stringify(method)}](${JSON.stringify(argument)}):['not_ready',0,0,0];})()`,
       contextId,returnByValue:true
     });
+    if(controller.closing||controller.generation!==generation||controller.session!==session)throw new Error('Command context changed');
     const receipt=result&&result.result&&result.result.value;
     const states=['ok','invalid','not_ready','busy','full','missing','duplicate_stack','limit','unknown'];
     if(!Array.isArray(receipt)||receipt.length!==4||!states.includes(receipt[0])||
@@ -144,19 +146,69 @@ async function publish(game) {
   await fs.writeFile(file,JSON.stringify(value),{mode:0o600});
   await fs.rename(file,path.join(home,entry.statusFile));
 }
+function connectDebugger(controller) {
+  const wc=controller.wc,session=++controller.session;
+  const active=()=>!controller.closing&&!wc.isDestroyed()&&controller.session===session;
+  try {
+    if(typeof wc.debugger.isAttached!=='function'||!wc.debugger.isAttached())wc.debugger.attach('1.3');
+    // Pause chapter-five requests immediately, including a not-yet-known version.
+    // Every paused request still awaits the manifest and exact-URL validation below.
+    const initialPatterns=Object.entries(games).filter(([game])=>game!=='zm5')
+      .map(([,entry])=>({urlPattern:entry.url+'*',requestStage:'Request'}));
+    initialPatterns.push({urlPattern:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v*.swf*',requestStage:'Request'});
+    const bootstrap=wc.debugger.sendCommand('Fetch.enable',{patterns:initialPatterns});
+    Promise.all([wc.debugger.sendCommand('Runtime.enable'),wc.debugger.sendCommand('Page.enable'),
+      bootstrap.then(()=>autoReady).then(()=>!active()?null:wc.debugger.sendCommand('Fetch.enable',
+      {patterns:Object.values(games).filter(entry=>!entry.disabled).map(entry=>({urlPattern:entry.url+'*',requestStage:'Request'}))}))])
+      .catch(error=>{if(active())errorFor(null,error);});
+  } catch(error) {if(active())errorFor(null,error);}
+}
 function attach(window) {
   const wc=window.webContents;
-  const controller={wc,contexts:new Map(),game:null,frameId:null,generation:0};
+  const controller={wc,contexts:new Map(),game:null,frameId:null,generation:0,session:0,closing:false};
   controllers.add(controller);
   wc.once('destroyed',()=>controllers.delete(controller));
+  if(process.platform==='win32') {
+    const resume=()=>{
+      if(!controller.closing||wc.isDestroyed())return;
+      controller.closing=false;controller.generation++;controller.contexts.clear();
+      // Keep the loaded chapter and claimed command IDs. Runtime.enable sends
+      // existing contexts again; no navigation, game reload or item retry occurs.
+      connectDebugger(controller);
+    };
+    window.on('close',event=>{
+      if(controller.closing)return;
+      // Electron 11 with PepperFlash can hang closing while CDP is attached.
+      // Stop work and detach before Chromium begins its normal unload path.
+      controller.closing=true;controller.generation++;controller.session++;controller.contexts.clear();
+      try {if(wc.debugger.isAttached())wc.debugger.detach();}catch(_){}
+      // Another native close listener may cancel without a DOM beforeunload.
+      process.nextTick(()=>{if(event.defaultPrevented)resume();});
+    });
+    wc.on('will-prevent-unload',event=>{
+      if(!controller.closing)return;
+      let choice=0;
+      try {
+        choice=dialog.showMessageBoxSync(window,{type:'question',title:'关闭造梦西游',
+          message:'游戏页面阻止了关闭。请确认已在游戏中保存。',
+          buttons:['返回游戏','已保存，关闭游戏'],defaultId:0,cancelId:0,noLink:true});
+      }catch(_){}
+      if(choice===1)event.preventDefault();
+      else resume();
+    });
+  }
   wc.on('did-start-navigation',(_event,_url,inPlace,isMainFrame)=>{
     if(isMainFrame&&!inPlace){controller.game=null;controller.contexts.clear();controller.generation++;}
   });
   wc.debugger.on('detach',()=>{
+    if(controller.closing)return;
     errorFor(controller.game,'接入连接已断开，请保存并重开游戏。');
-    controller.contexts.clear();controller.game=null;controller.generation++;
+    controller.contexts.clear();controller.game=null;controller.generation++;controller.session++;
   });
   wc.debugger.on('message',async(_event,method,params)=>{
+    const session=controller.session;
+    const active=()=>!controller.closing&&!wc.isDestroyed()&&controller.session===session;
+    if(!active())return;
     let requestGame;
     try {
       if(method==='Runtime.executionContextCreated') {
@@ -175,7 +227,8 @@ function attach(window) {
       } else if(method==='Fetch.requestPaused') {
         const bootGeneration=controller.generation;
         await autoReady;
-        if(bootGeneration!==controller.generation||wc.isDestroyed()) {
+        if(!active())return;
+        if(bootGeneration!==controller.generation) {
           await wc.debugger.sendCommand('Fetch.continueRequest',{requestId:params.requestId});return;
         }
         requestGame=Object.keys(games).find(game=>!games[game].disabled&&params.request.url.split('?')[0]===games[game].url);
@@ -189,37 +242,31 @@ function attach(window) {
         const entry=games[requestGame];
         if(!entry.patchData) {
           const patch=await readBounded(fs,home,entry.patch,32_000_000);
+          if(!active())return;
+          if(generation!==controller.generation) {
+            await wc.debugger.sendCommand('Fetch.continueRequest',{requestId:params.requestId});return;
+          }
           if(entry.resultHash)verifyPatch(patch,entry.resultHash);
           entry.patchData=patch;
         }
+        if(!active())return;
         await wc.debugger.sendCommand('Fetch.fulfillRequest',{
           requestId:params.requestId,responseCode:200,
           responseHeaders:[{name:'Content-Type',value:'application/x-shockwave-flash'},
             {name:'Cache-Control',value:'no-store'}],body:entry.patchData.toString('base64')
         });
-        if(generation===controller.generation) {
+        if(active()&&generation===controller.generation) {
           controller.game=requestGame;entry.status.error='';
         }
       }
     } catch(error) {
+      if(!active())return;
       errorFor(requestGame||controller.game,error);
       if(method==='Fetch.requestPaused') await wc.debugger.sendCommand('Fetch.continueRequest',
         {requestId:params.requestId}).catch(()=>{});
     }
   });
-  try {
-    wc.debugger.attach('1.3');
-    // Pause chapter-five requests immediately, including a not-yet-known version.
-    // Every paused request still awaits the manifest and exact-URL validation above.
-    const initialPatterns=Object.entries(games).filter(([game])=>game!=='zm5')
-      .map(([,entry])=>({urlPattern:entry.url+'*',requestStage:'Request'}));
-    initialPatterns.push({urlPattern:'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/v*.swf*',requestStage:'Request'});
-    const bootstrap=wc.debugger.sendCommand('Fetch.enable',{patterns:initialPatterns});
-    Promise.all([wc.debugger.sendCommand('Runtime.enable'),wc.debugger.sendCommand('Page.enable'),
-      bootstrap.then(()=>autoReady).then(()=>wc.isDestroyed()?null:wc.debugger.sendCommand('Fetch.enable',
-      {patterns:Object.values(games).filter(entry=>!entry.disabled).map(entry=>({urlPattern:entry.url+'*',requestStage:'Request'}))}))])
-      .catch(error=>errorFor(null,error));
-  } catch(error) {errorFor(null,error);}
+  connectDebugger(controller);
 }
 app.on('browser-window-created',(_event,window)=>attach(window));
 const timer=setInterval(async()=>{
@@ -235,7 +282,7 @@ const timer=setInterval(async()=>{
       }
     }
     for(const c of controllers) {
-      if(!c.game||c.wc.isDestroyed()) continue;
+      if(!c.game||c.closing||c.wc.isDestroyed()) continue;
       const entry=games[c.game];
       const generation=c.generation;
       let chapterCatalogs={};
@@ -251,24 +298,26 @@ const timer=setInterval(async()=>{
         }
       }
       for(const [contextId,context] of c.contexts) {
-        if(context.frameId!==c.frameId||context.origin!==new URL(entry.url).origin||generation!==c.generation)continue;
+        if(c.closing||context.frameId!==c.frameId||context.origin!==new URL(entry.url).origin||generation!==c.generation)continue;
         const result=await c.wc.debugger.sendCommand('Runtime.evaluate',{
           expression:`(${updateAttack.toString()})(${JSON.stringify(entry.config)},${JSON.stringify(chapterCatalogs)})`,contextId,returnByValue:true
         }).catch(error=>{
           if(/Cannot find context/.test(String(error.message||error))) c.contexts.delete(contextId);
           return null;
         });
-        if(generation!==c.generation)break;
+        if(c.closing||generation!==c.generation)break;
         if(result&&result.result&&result.result.value) entry.status={...entry.status,...result.result.value};
         if(['zm2','zm3'].includes(c.game))await handleCommand(c,contextId,generation);
       }
     }
     for(const [game,entry] of Object.entries(games)) {
-      entry.status.patched_loaded=Array.from(controllers).some(c=>c.game===game&&!c.wc.isDestroyed());
+      entry.status.patched_loaded=Array.from(controllers).some(c=>c.game===game&&!c.closing&&!c.wc.isDestroyed());
       if(!entry.status.patched_loaded)entry.status={patched_loaded:false,attack_checks:0,error:entry.status.error};
       await publish(game);
     }
   } catch(error) {errorFor(null,error);}
   finally {busy=false;}
 },500);
-app.once('before-quit',()=>{stopped=true;clearInterval(timer);});
+// A Windows beforeunload cancellation can cancel app.quit as well. Keep the
+// timer alive until quitting is certain so a resumed window retains its settings.
+app.once(process.platform==='win32'?'will-quit':'before-quit',()=>{stopped=true;clearInterval(timer);});

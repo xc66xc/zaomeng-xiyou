@@ -82,12 +82,13 @@ test('chapter changes expire the other callback and discard previous chapter tel
   assert.equal(configure(page,config('zm5')).attack_checks,undefined);
 });
 
-function bridgeHarness(initialFiles={},initialDeferred={}) {
+function bridgeHarness(initialFiles={},initialDeferred={},options={}) {
   const home=path.join(__dirname,'测试客户端 with spaces');
   const app=new EventEmitter(), shortcuts=new Map(), memory=new Map(), sent=[];
   const configs=new Map([['settings-zm1.json',config('zm1',{attack_multiplier:11})],['settings-zm2.json',config('zm2',{attack_multiplier:7})],['settings.json',config('zm5')],['settings-zm4.json',config('zm4',{attack_multiplier:3})],['settings-zm3.json',config('zm3',{attack_multiplier:5})]]);
   const failures=new Set(),deferred=new Map(Object.entries(initialDeferred)),files=new Map(Object.entries({...automaticFiveFiles({game_url:urls.zm5}).files,...initialFiles}));
   let poll,cleared=false;
+  const dialogs=[],choices=[],fakeProcess={pid:process.pid,platform:options.platform||'darwin',nextTick:process.nextTick.bind(process)};
   const fakeFs={
     async readFile(file) {
       const name=path.basename(file);
@@ -119,33 +120,47 @@ function bridgeHarness(initialFiles={},initialDeferred={}) {
   };
   const sandbox=vm.createContext({
     require(name) {
-      if(name==='electron')return {app,globalShortcut:{unregister:key=>shortcuts.delete(key)}};
+      if(name==='electron')return {app,globalShortcut:{unregister:key=>shortcuts.delete(key)},dialog:{showMessageBoxSync(window,value){dialogs.push(value);return choices.length?choices.shift():0;}}};
       if(name==='fs')return {promises:fakeFs};
       if(name==='./attack.cjs')return update;
       return require(name);
-    },__dirname:home,process,Buffer,Date,Set,JSON,Number,Promise,
+    },__dirname:home,process:fakeProcess,Buffer,Date,Set,JSON,Number,Promise,
     setInterval(fn){poll=fn;return 1;},clearInterval(){cleared=true;}
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname,'bridge.cjs'),'utf8'),sandbox);
   function window() {
     const plugins=[];
-    const debuggerApi=new EventEmitter(),page=vm.createContext({window:{},document:{querySelectorAll:()=>plugins}}),wc=new EventEmitter();
-    debuggerApi.attach=()=>{};
+    const debuggerApi=new EventEmitter(),page=vm.createContext({window:{},document:{querySelectorAll:()=>plugins}}),wc=new EventEmitter(),win=new EventEmitter();
+    let attached=false,destroyed=false,attaches=0,detaches=0;
+    const pendingCommands=new Map();
+    debuggerApi.attach=()=>{attached=true;attaches++;};
+    debuggerApi.isAttached=()=>attached;
+    debuggerApi.detach=()=>{attached=false;detaches++;debuggerApi.emit('detach',{},'target_closed');};
     debuggerApi.sendCommand=async(method,args)=>{
+      if(!attached)throw new Error('Debugger is not attached');
       sent.push([method,args]);
+      if(pendingCommands.has(method)){
+        const deferred=pendingCommands.get(method);
+        if(!deferred.match||deferred.match(args)){pendingCommands.delete(method);return typeof deferred.pending==='function'?deferred.pending(args):deferred.pending;}
+      }
       if(method==='Runtime.evaluate')return {result:{value:vm.runInContext(args.expression,page)}};
       return {};
     };
-    wc.debugger=debuggerApi;wc.isDestroyed=()=>false;
-    app.emit('browser-window-created',{}, {webContents:wc});
-    return {wc,page,debuggerApi,plugins,
+    wc.debugger=debuggerApi;wc.isDestroyed=()=>destroyed;win.webContents=wc;win.isDestroyed=()=>destroyed;
+    app.emit('browser-window-created',{},win);
+    return {wc,win,page,debuggerApi,plugins,
+      get attaches(){return attaches;},get detaches(){return detaches;},
+      deferCommand(method,pending,match){pendingCommands.set(method,{pending,match});},
+      close(){const event={defaultPrevented:false,preventDefault(){this.defaultPrevented=true;}};win.emit('close',event);return event;},
+      destroy(){destroyed=true;wc.emit('destroyed');win.emit('closed');},
+      veto(){const event={defaultPrevented:false,preventDefault(){this.defaultPrevented=true;}};wc.emit('will-prevent-unload',event);return event;},
       context(id=7,game='zm3',origin=new URL(urls[game]).origin){debuggerApi.emit('message',{},'Runtime.executionContextCreated',
         {context:{id,origin,auxData:{isDefault:true,frameId:'game-frame'}}});},
       request(game,id=game,url=urls[game]){debuggerApi.emit('message',{},'Fetch.requestPaused',
         {requestId:id,frameId:'game-frame',request:{url}});}
     };
   }
-  return {app,shortcuts,memory,sent,configs,failures,deferred,files,window,poll:()=>poll(),
+  return {app,shortcuts,memory,sent,configs,failures,deferred,files,window,dialogs,choices,poll:()=>poll(),
     status:game=>JSON.parse(memory.get(path.join(home,game==='zm5'?'status.json':`status-${game}.json`))),
     get cleared(){return cleared;}};
 }
@@ -798,4 +813,97 @@ test('chapter five never serves a patch without its manifest, including an inter
   assert.match(h.status('zm5').error,/尚无自动适配记录/);
   w.context(8,'zm3');w.request('zm3','unaffected');await flush();await h.poll();
   assert.equal(h.status('zm3').patched_loaded,true);
+});
+
+test('Windows native close detaches before unload and stops polling that window without prompting',async()=>{
+  const h=bridgeHarness({}, {}, {platform:'win32'}),w=h.window();
+  w.context(7,'zm5');w.request('zm5');await flush();await h.poll();
+  assert.equal(h.status('zm5').patched_loaded,true);
+  const before=h.sent.filter(([method])=>method==='Runtime.evaluate').length;
+  w.close();await flush();await h.poll();
+  assert.equal(w.debuggerApi.isAttached(),false);assert.equal(w.detaches,1);
+  assert.equal(h.sent.filter(([method])=>method==='Runtime.evaluate').length,before);
+  assert.equal(h.status('zm5').patched_loaded,false);assert.equal(h.status('zm5').error,'');assert.equal(h.dialogs.length,0);
+  w.destroy();h.app.emit('will-quit');assert.equal(h.cleared,true);
+});
+
+test('Windows beforeunload cancellation resumes the same chapter and leaves navigation alone',async()=>{
+  const h=bridgeHarness({}, {}, {platform:'win32'}),w=h.window();
+  w.context(7,'zm5');w.request('zm5');await flush();await h.poll();
+  const patches=h.sent.filter(([method])=>method==='Fetch.fulfillRequest').length;
+  assert.equal(w.veto().defaultPrevented,false);assert.equal(h.dialogs.length,0);
+  h.app.emit('before-quit');assert.equal(h.cleared,false);
+  w.close();h.choices.push(0);assert.equal(w.veto().defaultPrevented,false);await flush();
+  assert.equal(w.debuggerApi.isAttached(),true);assert.equal(w.attaches,2);
+  assert.deepEqual(Array.from(h.dialogs[0].buttons),['返回游戏','已保存，关闭游戏']);
+  assert.equal(h.dialogs[0].defaultId,0);assert.equal(h.dialogs[0].cancelId,0);
+  w.context(9,'zm5');await h.poll();
+  assert.equal(h.status('zm5').patched_loaded,true);assert.equal(h.status('zm5').error,'');
+  assert.equal(w.page.window.__zmxyAttackPower5(10,'role','monster'),100);
+  assert.equal(h.sent.filter(([method])=>method==='Fetch.fulfillRequest').length,patches);
+  w.wc.emit('did-start-navigation',{},'https://login.example/frame',false,false);
+  assert.equal(w.veto().defaultPrevented,false);assert.equal(h.dialogs.length,1);
+  await h.poll();assert.equal(h.status('zm5').patched_loaded,true);
+});
+
+test('Windows confirmed beforeunload uses normal unload without reconnecting',async()=>{
+  const h=bridgeHarness({}, {}, {platform:'win32'}),w=h.window();await flush();
+  w.close();h.choices.push(1);assert.equal(w.veto().defaultPrevented,true);await flush();
+  assert.equal(w.debuggerApi.isAttached(),false);assert.equal(w.attaches,1);assert.equal(h.dialogs.length,1);
+  w.destroy();await h.poll();assert.equal(h.status('zm5').patched_loaded,false);
+});
+
+test('Windows native close cancellation by another listener restores the debugger after dispatch',async()=>{
+  const h=bridgeHarness({}, {}, {platform:'win32'}),w=h.window();
+  w.context(7,'zm5');w.request('zm5');await flush();await h.poll();
+  w.win.on('close',event=>event.preventDefault());
+  assert.equal(w.close().defaultPrevented,true);assert.equal(w.debuggerApi.isAttached(),false);
+  await flush();assert.equal(w.debuggerApi.isAttached(),true);assert.equal(w.attaches,2);
+  w.context(9,'zm5');await h.poll();assert.equal(h.status('zm5').patched_loaded,true);assert.equal(h.dialogs.length,0);
+});
+
+test('closing invalidates pending bootstrap, patch reads and fulfill acknowledgements',async()=>{
+  const fixture=automaticFiveFiles();
+  let releaseManifest;const manifestPending=new Promise(resolve=>{releaseManifest=resolve;});
+  const h=bridgeHarness(fixture.files,{'auto-zm5.json':manifestPending},{platform:'win32'}),w=h.window();
+  const bootstrapCount=h.sent.length;w.close();releaseManifest(fixture.files['auto-zm5.json']);await flush();
+  assert.equal(h.sent.length,bootstrapCount);await h.poll();assert.equal(h.status('zm5').error,'');
+  let releasePatch;const patchPending=new Promise(resolve=>{releasePatch=resolve;});
+  const reading=bridgeHarness({}, {'patched-zm3.swf':patchPending},{platform:'win32'}),r=reading.window();
+  r.context();r.request('zm3','pending-read');await flush();r.close();
+  releasePatch(Buffer.from('patched-zm3.swf'));await flush();await reading.poll();
+  assert(!reading.sent.some(([method,args])=>method==='Fetch.fulfillRequest'&&args.requestId==='pending-read'));
+  assert.equal(reading.status('zm3').patched_loaded,false);assert.equal(reading.status('zm3').error,'');
+  let releaseFulfill;const fulfillPending=new Promise(resolve=>{releaseFulfill=resolve;});
+  const fulfilling=bridgeHarness({}, {}, {platform:'win32'}),f=fulfilling.window();await flush();
+  f.deferCommand('Fetch.fulfillRequest',fulfillPending);f.context();f.request('zm3','pending-ack');await flush();
+  f.close();fulfilling.choices.push(0);f.veto();releaseFulfill({});await flush();await fulfilling.poll();
+  assert.equal(fulfilling.status('zm3').patched_loaded,false);
+});
+
+test('canceling a close never retries an item mutation whose reply crossed the detached session',async()=>{
+  const h=bridgeHarness({}, {}, {platform:'win32'}),w=h.window(),calls=[];
+  w.plugins.push(flashPlugin(calls));w.context();w.request('zm3');await flush();await h.poll();
+  let release;const pending=new Promise(resolve=>{release=resolve;});
+  w.deferCommand('Runtime.evaluate',args=>{vm.runInContext(args.expression,w.page);return pending;},args=>args.expression.startsWith('(() => {const c='));
+  h.configs.get('settings-zm3.json').command=command();
+  const polling=h.poll();await flush();assert.equal(calls.length,1);
+  w.close();h.choices.push(0);w.veto();w.context(9,'zm3');
+  release({result:{value:['ok',0,999,999]}});await polling;await flush();await h.poll();
+  assert.equal(calls.length,1);assert.equal(h.status('zm3').command_result.state,'unknown');
+  assert.match(h.status('zm3').error,/不会自动重试/);
+  h.configs.get('settings-zm3.json').command=command({id:'explicit-new-click'});await h.poll();assert.equal(calls.length,2);
+});
+
+test('unexpected Windows detachment retains its reconnect warning and macOS close behavior is unchanged',async()=>{
+  const h=bridgeHarness({}, {}, {platform:'win32'}),w=h.window();
+  w.context(7,'zm5');w.request('zm5');await flush();await h.poll();
+  w.debuggerApi.detach();await h.poll();assert.equal(h.status('zm5').patched_loaded,false);
+  assert.match(h.status('zm5').error,/接入连接已断开/);assert.equal(h.dialogs.length,0);
+  const mac=bridgeHarness({}, {}, {platform:'darwin'}),m=mac.window();
+  m.context(7,'zm5');m.request('zm5');await flush();await mac.poll();m.close();
+  assert.equal(m.debuggerApi.isAttached(),true);assert.equal(m.detaches,0);
+  assert.equal(m.veto().defaultPrevented,false);assert.equal(mac.dialogs.length,0);
+  await mac.poll();assert.equal(mac.status('zm5').patched_loaded,true);
+  mac.app.emit('before-quit');assert.equal(mac.cleared,true);
 });
