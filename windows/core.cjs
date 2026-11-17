@@ -10,6 +10,7 @@ const {promisify} = require('node:util');
 const {setTimeout:delay} = require('node:timers/promises');
 const execute = promisify(execFile);
 const MAX = 32_000_000;
+const GAME_ZOOMS = [1,1.25,1.5,1.75,2,2.5,3];
 const TOPIC = 'https://www.4399.com/flash/zmhj.htm';
 const AUTO_BASE = 'https://sda.4399.com/4399swf/upload_swf/ftp22/csya/20170622/1/';
 const START = '// ZMXY_DROP_CONTROL_BEGIN\n';
@@ -224,7 +225,7 @@ class HelperService {
   constructor({support,resources,fetcher=fetchBounded,processQuery,launcher}={}) {
     if(!support||!resources)throw failure('助手路径未配置。');
     this.support=path.resolve(support);this.resources=path.resolve(resources);this.fetcher=fetcher;
-    this.processQuery=processQuery;this.launcher=launcher;this.clientPath='';this.client=null;this.clientError='';this.running=false;this.displayMode='native';
+    this.processQuery=processQuery;this.launcher=launcher;this.clientPath='';this.client=null;this.clientError='';this.running=false;this.displayMode='native';this.gameZoom=1;
     this.configs=Object.fromEntries(Object.keys(CHAPTERS).map(game=>[game,defaults(game)]));
     this.catalogs={};this.statuses={};this.commandMessages={};this.pending={};this.pids=new Set();
     this.closed=false;this.queue=Promise.resolve();this.queryAt=0;
@@ -245,14 +246,26 @@ class HelperService {
     try {
       const display=JSON.parse((await boundedFile(path.join(this.support,'windows-display.json'),16000)).toString('utf8'));
       if(display?.mode==='native'||display?.mode==='system')this.displayMode=display.mode;
+      if(GAME_ZOOMS.includes(display?.zoom))this.gameZoom=display.zoom;
     }catch{}
     await this.tick();return this.snapshot();
   }
-  snapshot() { return {clientPath:this.clientPath,clientError:this.clientError,displayMode:this.displayMode,running:this.running,configs:structuredClone(this.configs),statuses:structuredClone(this.statuses),commandMessages:{...this.commandMessages},catalogs:structuredClone(this.catalogs)}; }
+  snapshot() { return {clientPath:this.clientPath,clientError:this.clientError,displayMode:this.displayMode,gameZoom:this.gameZoom,running:this.running,configs:structuredClone(this.configs),statuses:structuredClone(this.statuses),commandMessages:{...this.commandMessages},catalogs:structuredClone(this.catalogs)}; }
+  async saveDisplay(update) {
+    const work=async()=>{
+      const display={mode:this.displayMode,zoom:this.gameZoom,...update};
+      await atomicWrite(path.join(this.support,'windows-display.json'),JSON.stringify(display));
+      this.displayMode=display.mode;this.gameZoom=display.zoom;return this.snapshot();
+    };
+    this.queue=this.queue.catch(()=>{}).then(work);return this.queue;
+  }
   async setDisplayMode(mode) {
     if(mode!=='native'&&mode!=='system')throw failure('显示模式无效，请选择原生像素或跟随系统缩放。');
-    await atomicWrite(path.join(this.support,'windows-display.json'),JSON.stringify({mode}));
-    this.displayMode=mode;return this.snapshot();
+    return this.saveDisplay({mode});
+  }
+  async setGameZoom(zoom) {
+    if(!GAME_ZOOMS.includes(zoom))throw failure('画面大小无效，请选择 100%～300% 的预设大小。');
+    return this.saveDisplay({zoom});
   }
   async selectClient(exe) {
     if(this.clientPath)await this.ensureStopped();

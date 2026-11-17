@@ -67,6 +67,7 @@ const actions = {
   chooseClient,
   apply:payload => service.apply(payload.game,payload.values),
   setDisplayMode:payload => service.setDisplayMode(payload.mode),
+  setGameZoom:payload => service.setGameZoom(payload.zoom),
   command:payload => service.command(payload.game,payload),
   connect:payload => connect(payload.game),
   downloadGame:payload => downloadGame(payload.game),

@@ -83,6 +83,7 @@ function renderState(state) {
   snapshot = state || {};
   $('version').textContent = state.version || '';
   $('display-mode').value = state.displayMode || 'native';
+  $('game-zoom').value = String(state.gameZoom || 1);
   $('client-path').textContent = state.clientPath || '尚未选择兼容 Windows 客户端';
   const current = state.statuses?.[game];
   const connected = !!current;
@@ -103,9 +104,9 @@ function renderState(state) {
 async function operation(task) {
   if (busy) return;
   busy = true;
-  for (const id of ['connect','download-game','choose-client','restore-client','display-mode']) $(id).disabled = true;
+  for (const id of ['connect','download-game','choose-client','restore-client','display-mode','game-zoom']) $(id).disabled = true;
   try {await task();} catch (error) {message('操作未完成',error.message,12000);}
-  finally {busy = false;for (const id of ['connect','download-game','choose-client','restore-client','display-mode']) $(id).disabled = false;}
+  finally {busy = false;for (const id of ['connect','download-game','choose-client','restore-client','display-mode','game-zoom']) $(id).disabled = false;}
 }
 function integer(id, maximum, label) {
   const text = $(id).value.trim();
@@ -124,6 +125,11 @@ $('reset-attack').addEventListener('click',() => {$('attack').value = '1';$('att
 $('display-mode').addEventListener('change',() => operation(async() => {
   await call('setDisplayMode',{mode:$('display-mode').value});
   message('游戏显示模式已设置','请先在游戏中保存并退出，再点击「接入并打开游戏」使显示模式生效。');
+}));
+$('game-zoom').addEventListener('change',() => operation(async() => {
+  const zoom=Number($('game-zoom').value);
+  const state=await call('setGameZoom',{zoom});renderState({...snapshot,...state});
+  message(`画面大小已设为 ${Math.round(zoom*100)}%`,state.running?'游戏运行时会自动应用，无需重新加载。':'下次打开游戏时自动应用。');
 }));
 $('features-form').addEventListener('submit',event => {event.preventDefault();operation(async() => {
   const targetGame = game;

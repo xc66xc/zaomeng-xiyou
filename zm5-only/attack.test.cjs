@@ -120,7 +120,9 @@ function bridgeHarness(initialFiles={},initialDeferred={},options={}) {
   };
   const sandbox=vm.createContext({
     require(name) {
-      if(name==='electron')return {app,globalShortcut:{unregister:key=>shortcuts.delete(key)},dialog:{showMessageBoxSync(window,value){dialogs.push(value);return choices.length?choices.shift():0;}}};
+      if(name==='electron')return {app,globalShortcut:{unregister:key=>shortcuts.delete(key)},
+        screen:{getDisplayMatching:()=>({workArea:options.workArea||{x:0,y:0,width:3840,height:2080}})},
+        dialog:{showMessageBoxSync(window,value){dialogs.push(value);return choices.length?choices.shift():0;}}};
       if(name==='fs')return {promises:fakeFs};
       if(name==='./attack.cjs')return update;
       return require(name);
@@ -128,7 +130,7 @@ function bridgeHarness(initialFiles={},initialDeferred={},options={}) {
     setInterval(fn){poll=fn;return 1;},clearInterval(){cleared=true;}
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname,'bridge.cjs'),'utf8'),sandbox);
-  function window() {
+  function window(windowOptions={}) {
     const plugins=[];
     const debuggerApi=new EventEmitter(),page=vm.createContext({window:{},document:{querySelectorAll:()=>plugins}}),wc=new EventEmitter(),win=new EventEmitter();
     let attached=false,destroyed=false,attaches=0,detaches=0;
@@ -147,8 +149,16 @@ function bridgeHarness(initialFiles={},initialDeferred={},options={}) {
       return {};
     };
     wc.debugger=debuggerApi;wc.isDestroyed=()=>destroyed;win.webContents=wc;win.isDestroyed=()=>destroyed;
+    const zoomCalls=[],resizeCalls=[];
+    let bounds={x:100,y:100,width:1020,height:740,...windowOptions.bounds};
+    wc.url=windowOptions.url||'https://www.4399.com/flash/zmhj.htm?g=5';wc.zoomFactor=1;
+    wc.getURL=()=>wc.url;wc.getZoomFactor=()=>wc.zoomFactor;
+    wc.setZoomFactor=value=>{wc.zoomFactor=value;zoomCalls.push(value);};
+    win.isMaximized=()=>!!windowOptions.maximized;win.isFullScreen=()=>!!windowOptions.fullscreen;
+    win.getBounds=()=>({...bounds});win.getContentSize=()=>[bounds.width-20,bounds.height-40];
+    win.setBounds=value=>{bounds={...value};resizeCalls.push(value);};
     app.emit('browser-window-created',{},win);
-    return {wc,win,page,debuggerApi,plugins,
+    return {wc,win,page,debuggerApi,plugins,zoomCalls,resizeCalls,
       get attaches(){return attaches;},get detaches(){return detaches;},
       deferCommand(method,pending,match){pendingCommands.set(method,{pending,match});},
       close(){const event={defaultPrevented:false,preventDefault(){this.defaultPrevented=true;}};win.emit('close',event);return event;},
@@ -906,4 +916,39 @@ test('unexpected Windows detachment retains its reconnect warning and macOS clos
   assert.equal(m.veto().defaultPrevented,false);assert.equal(mac.dialogs.length,0);
   await mac.poll();assert.equal(mac.status('zm5').patched_loaded,true);
   mac.app.emit('before-quit');assert.equal(mac.cleared,true);
+});
+
+test('Windows game zoom redraws the existing session and is restored after origin navigation',async()=>{
+  const h=bridgeHarness({}, {}, {platform:'win32'}),w=h.window();
+  w.context(7,'zm5');w.request('zm5');await flush();await h.poll();
+  assert.equal(w.zoomCalls.length,0);assert.equal(w.resizeCalls.length,0);
+  const patches=h.sent.filter(([method])=>method==='Fetch.fulfillRequest').length;
+  h.files.set('windows-display.json',JSON.stringify({mode:'native',zoom:2}));await h.poll();
+  assert.deepEqual(w.zoomCalls,[2]);assert.equal(w.resizeCalls.length,1);
+  assert.equal(w.resizeCalls[0].width,2020);assert.equal(w.resizeCalls[0].height,1480);
+  assert.equal(h.status('zm5').patched_loaded,true);
+  assert.equal(w.page.window.__zmxyAttackPower5(10,'role','monster'),100);
+  assert.equal(h.sent.filter(([method])=>method==='Fetch.fulfillRequest').length,patches);
+  await h.poll();assert.deepEqual(w.zoomCalls,[2]);
+  w.wc.zoomFactor=1;w.wc.emit('dom-ready');
+  assert.deepEqual(w.zoomCalls,[2,2]);assert.equal(w.resizeCalls.length,1);
+  h.files.set('windows-display.json','{interrupted');await h.poll();assert.equal(w.wc.zoomFactor,2);
+  h.files.set('windows-display.json',JSON.stringify({zoom:999}));await h.poll();assert.equal(w.wc.zoomFactor,2);
+  h.files.set('windows-display.json',JSON.stringify({zoom:1}));await h.poll();assert.equal(w.wc.zoomFactor,1);
+});
+
+test('Windows zoom fits the current display and leaves maximized, auxiliary and closing windows alone',async()=>{
+  const h=bridgeHarness({'windows-display.json':JSON.stringify({zoom:3})}, {},
+    {platform:'win32',workArea:{x:1920,y:0,width:1920,height:1080}});
+  const w=h.window({bounds:{x:3600,y:900}}),max=h.window({maximized:true}),full=h.window({fullscreen:true});
+  const login=h.window({url:'https://ptlogin.4399.com/login'}),other=h.window({url:'https://www.4399.com/flash/other.htm'});
+  await flush();await h.poll();
+  assert.deepEqual({...w.resizeCalls[0]},{x:1920,y:0,width:1920,height:1080});
+  for(const preserved of [max,full]){assert.deepEqual(preserved.zoomCalls,[3]);assert.equal(preserved.resizeCalls.length,0);}
+  for(const auxiliary of [login,other]){assert.equal(auxiliary.zoomCalls.length,0);assert.equal(auxiliary.resizeCalls.length,0);}
+  w.close();h.files.set('windows-display.json',JSON.stringify({zoom:2}));await h.poll();
+  assert.equal(w.wc.zoomFactor,3);w.wc.emit('dom-ready');assert.equal(w.wc.zoomFactor,3);
+  w.destroy();await h.poll();assert.equal(w.zoomCalls.length,1);
+  const mac=bridgeHarness({'windows-display.json':JSON.stringify({zoom:2})}, {}, {platform:'darwin'}),m=mac.window();
+  m.wc.emit('dom-ready');await mac.poll();assert.equal(m.zoomCalls.length,0);assert.equal(m.resizeCalls.length,0);
 });
