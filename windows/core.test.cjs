@@ -138,9 +138,9 @@ test('saved client selection survives restart and invalid selections report a wa
   assert.match((await missing.initialize()).clientError,/上次选择的客户端无法使用/);await missing.shutdown();
 });
 test('display mode defaults to native pixels and persists only accepted choices',async t=>{
-  const f=await fixture(t);assert.equal(f.service.snapshot().displayMode,'native');
+  const f=await fixture(t);assert.equal(f.service.snapshot().displayMode,'native');assert.equal(f.service.snapshot().gameZoom,1);
   await f.service.setDisplayMode('system');
-  assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.support,'windows-display.json'),'utf8')),{mode:'system'});
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.support,'windows-display.json'),'utf8')),{mode:'system',zoom:1});
   const restarted=new HelperService({support:f.support,resources:f.resources,processQuery:async()=>[]});
   assert.equal((await restarted.initialize()).displayMode,'system');
   for(const mode of ['auto','',null,1])await assert.rejects(restarted.setDisplayMode(mode),/显示模式无效/);
@@ -148,6 +148,32 @@ test('display mode defaults to native pixels and persists only accepted choices'
   await fs.writeFile(path.join(f.support,'windows-display.json'),JSON.stringify({mode:'unrecognized'}));
   const invalid=new HelperService({support:f.support,resources:f.resources,processQuery:async()=>[]});
   assert.equal((await invalid.initialize()).displayMode,'native');await invalid.shutdown();
+});
+test('game zoom persists independently of display mode and can change without restarting a running client',async t=>{
+  const f=await fixture(t);await f.service.selectClient(f.exe);
+  const beforeMain=await fs.readFile(path.join(f.app,'main.js')),beforeConfig=await fs.readFile(path.join(f.app,'config.json'));
+  f.setPids([4321]);f.service.queryAt=0;await f.service.tick();assert.equal(f.service.snapshot().running,true);
+  await Promise.all([f.service.setDisplayMode('system'),f.service.setGameZoom(2)]);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.support,'windows-display.json'),'utf8')),{mode:'system',zoom:2});
+  await f.service.setDisplayMode('native');assert.equal(f.service.snapshot().gameZoom,2);
+  assert.deepEqual(await fs.readFile(path.join(f.app,'main.js')),beforeMain);
+  assert.deepEqual(await fs.readFile(path.join(f.app,'config.json')),beforeConfig);assert.equal(f.launched.length,0);
+  const restarted=new HelperService({support:f.support,resources:f.resources,processQuery:async()=>[]});
+  const restored=await restarted.initialize();assert.equal(restored.displayMode,'native');assert.equal(restored.gameZoom,2);
+  for(const zoom of [0,0.5,1.1,4,'2',null,NaN,Infinity])await assert.rejects(restarted.setGameZoom(zoom),/画面大小无效/);
+  assert.equal(restarted.snapshot().gameZoom,2);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(f.support,'windows-display.json'),'utf8')),{mode:'native',zoom:2});
+  for(const zoom of [1,1.25,1.5,1.75,2,2.5,3])assert.equal((await restarted.setGameZoom(zoom)).gameZoom,zoom);
+  await restarted.shutdown();
+});
+test('legacy and invalid saved zoom values retain the selected display mode at original game size',async t=>{
+  const f=await fixture(t);
+  for(const zoom of [undefined,'2',0,1.1,4,null]) {
+    await fs.writeFile(path.join(f.support,'windows-display.json'),JSON.stringify({mode:'system',zoom}));
+    const restarted=new HelperService({support:f.support,resources:f.resources,processQuery:async()=>[]});
+    const state=await restarted.initialize();assert.equal(state.displayMode,'system');assert.equal(state.gameZoom,1);
+    await restarted.shutdown();
+  }
 });
 test('display selection changes only the next client launch arguments',async t=>{
   const f=await fixture(t);await f.service.selectClient(f.exe);

@@ -41,7 +41,8 @@
       </form>
     </section>
     <section class="status-box" aria-live="polite"><span id="status-dot"></span><div><strong id="status-title">先接入游戏，再应用倍率</strong><p id="status-detail">首次使用请先安装带 PepperFlash 的兼容 Electron 微端。</p></div></section>
-    <div class="display-options"><label for="display-mode">游戏显示</label><select id="display-mode"><option value="native">原生像素（清晰，窗口较小）</option><option value="system">跟随系统缩放（窗口较大）</option></select><span class="hint">保存并退出游戏后，重新接入生效</span></div>
+    <div class="display-options"><label for="display-mode">游戏显示</label><select id="display-mode"><option value="native">原生像素（优先清晰）</option><option value="system">跟随系统缩放</option></select><span class="hint">保存并退出游戏后，重新接入生效</span></div>
+    <div class="display-options"><label for="game-zoom">画面大小</label><select id="game-zoom" aria-describedby="game-zoom-hint"><option value="1">100%（原始大小）</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option><option value="2">200%</option><option value="2.5">250%</option><option value="3">300%</option></select><span id="game-zoom-hint" class="hint">游戏运行时可直接调整，无需重新加载</span></div>
     <section class="actions"><button id="connect" class="primary">接入并打开游戏</button><button id="download-game">官方游戏文件</button><button id="download-client">官方下载客户端 ↗</button></section>
     <footer><div class="client-row"><span id="client-path">尚未选择兼容 Windows 客户端</span><button id="choose-client" class="text-button">选择客户端</button><button id="restore-client" class="text-button">恢复客户端</button></div><p>接入前请保存并完全退出游戏。关闭助手后，约4秒恢复原倍率。</p></footer>
   </main>

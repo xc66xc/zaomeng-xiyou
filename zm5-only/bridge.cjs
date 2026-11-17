@@ -1,5 +1,5 @@
 'use strict';
-const {app,globalShortcut,Menu,dialog}=require('electron');
+const {app,globalShortcut,Menu,dialog,screen}=require('electron');
 if (typeof app.setName === 'function') app.setName('造梦西游');
 const fs=require('fs').promises;
 const path=require('path');
@@ -41,6 +41,28 @@ let busy=false,stopped=false;
 const catalogsByGame=new Map();
 const handledCommands=new Set();
 const unknownCommandError='物品操作结果未知，请先检查游戏背包；不会自动重试。';
+const gameZoomChoices=new Set([1,1.25,1.5,1.75,2,2.5,3]);
+let gameZoom=1;
+
+async function updateGameZoom() {
+  if(process.platform!=='win32')return;
+  try {
+    const display=JSON.parse((await readBounded(fs,home,'windows-display.json',16000)).toString('utf8'));
+    if(display&&gameZoomChoices.has(display.zoom))gameZoom=display.zoom;
+  }catch(_){} // Keep the last valid choice during an interrupted settings write.
+  for(const controller of controllers)if(controller.applyZoom)controller.applyZoom();
+}
+
+function resizeForGameZoom(window,zoom) {
+  if(!screen||typeof screen.getDisplayMatching!=='function'||typeof window.getBounds!=='function')return;
+  if(window.isMaximized()||window.isFullScreen())return;
+  const bounds=window.getBounds(),content=window.getContentSize();
+  const area=screen.getDisplayMatching(bounds).workArea;
+  const width=Math.min(area.width,Math.ceil(1000*zoom)+bounds.width-content[0]);
+  const height=Math.min(area.height,Math.ceil(720*zoom)+bounds.height-content[1]);
+  window.setBounds({x:Math.max(area.x,Math.min(bounds.x,area.x+area.width-width)),
+    y:Math.max(area.y,Math.min(bounds.y,area.y+area.height-height)),width,height});
+}
 
 async function loadCatalogs(game) {
   if(catalogsByGame.has(game))return catalogsByGame.get(game);
@@ -169,6 +191,20 @@ function attach(window) {
   controllers.add(controller);
   wc.once('destroyed',()=>controllers.delete(controller));
   if(process.platform==='win32') {
+    controller.applyZoom=()=>{
+      if(controller.closing||wc.isDestroyed()||typeof wc.setZoomFactor!=='function')return;
+      try {
+        const url=new URL(wc.getURL());
+        // Leave login, payment and other auxiliary windows at their own size.
+        if(url.protocol!=='https:'||url.hostname!=='www.4399.com'||url.pathname!=='/flash/zmhj.htm')return;
+        const previous=controller.zoomApplied;
+        if(wc.getZoomFactor()!==gameZoom)wc.setZoomFactor(gameZoom);
+        controller.zoomApplied=gameZoom;
+        if(previous!==gameZoom&&(previous!==undefined||gameZoom!==1))resizeForGameZoom(window,gameZoom);
+      }catch(_){} // A display preference must never stop the game bridge.
+    };
+    // Chromium keeps zoom per origin; reapply after navigation has selected it.
+    wc.on('dom-ready',controller.applyZoom);
     const resume=()=>{
       if(!controller.closing||wc.isDestroyed())return;
       controller.closing=false;controller.generation++;controller.contexts.clear();
@@ -273,6 +309,7 @@ const timer=setInterval(async()=>{
   if(busy||stopped)return;
   busy=true;
   try {
+    await updateGameZoom();
     for(const [game,entry] of Object.entries(games)) {
       try {
         const value=JSON.parse(await fs.readFile(path.join(home,entry.settings),'utf8'));
